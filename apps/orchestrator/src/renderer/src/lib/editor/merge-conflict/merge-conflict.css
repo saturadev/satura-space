@@ -1,0 +1,52 @@
+.monaco-editor .merge-conflict-current-content {
+  background-color: var(--vscode-merge-currentContentBackground, transparent);
+}
+
+.monaco-editor .merge-conflict-incoming-content {
+  background-color: var(--vscode-merge-incomingContentBackground, transparent);
+}
+
+.monaco-editor .merge-conflict-common-content {
+  background-color: var(--vscode-merge-commonContentBackground, transparent);
+}
+
+.monaco-editor .merge-conflict-current-header {
+  background-color: var(--vscode-merge-currentHeaderBackground, transparent);
+  outline-color: var(--vscode-merge-border, transparent);
+  outline-style: solid;
+  outline-width: 1pt;
+}
+
+.monaco-editor .merge-conflict-common-header {
+  background-color: var(--vscode-merge-commonHeaderBackground, transparent);
+  outline-color: var(--vscode-merge-border, transparent);
+  outline-style: solid;
+  outline-width: 1pt;
+}
+
+.monaco-editor .merge-conflict-splitter {
+  outline-color: var(--vscode-merge-border, transparent);
+  outline-style: solid;
+  outline-width: 1pt;
+}
+
+.monaco-editor .merge-conflict-incoming-header {
+  background-color: var(--vscode-merge-incomingHeaderBackground, transparent);
+  outline-color: var(--vscode-merge-border, transparent);
+  outline-style: solid;
+  outline-width: 1pt;
+}
+
+.monaco-editor .merge-conflict-foreground {
+  color: var(--vscode-editor-foreground, transparent) !important;
+}
+
+.monaco-editor .merge-conflict-current-header-after::after {
+  content: ' (Current Change)';
+  color: var(--vscode-descriptionForeground, transparent);
+}
+
+.monaco-editor .merge-conflict-incoming-header-after::after {
+  content: ' (Incoming Change)';
+  color: var(--vscode-descriptionForeground, transparent);
+}

@@ -1,0 +1,214 @@
+name: build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+env:
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+  NODE_OPTIONS: --max-old-space-size=6144
+  PNPM: corepack pnpm@10.34.9
+  PUBLISH: ${{ startsWith(github.ref, 'refs/tags/v') && 'always' || 'never' }}
+  SSIGN_VERSION: v0.1.8
+  SSIGN_SHA256: 89cbac647d19819a1a82645d2254ac51d2b34050835421294584385dadde1298
+
+jobs:
+  draft:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft --title "$GITHUB_REF_NAME" --notes ""
+
+  mac:
+    needs: draft
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: macos-15
+    timeout-minutes: 60
+    environment: signing
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: apps/orchestrator
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Install
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: $PNPM install --frozen-lockfile
+      - name: Typecheck
+        run: $PNPM typecheck
+      - name: Require signing on release tags
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$CSC_LINK" ] || [ -z "$CSC_KEY_PASSWORD" ]; then
+            echo "::error::Release tags must be signed: MAC_CERT_P12_BASE64 and MAC_CERT_PASSWORD are missing"
+            exit 1
+          fi
+          if { [ -z "$APPLE_API_KEY_P8" ] || [ -z "$APPLE_API_KEY_ID" ] || [ -z "$APPLE_API_ISSUER" ]; } &&
+             { [ -z "$APPLE_ID" ] || [ -z "$APPLE_APP_SPECIFIC_PASSWORD" ] || [ -z "$APPLE_TEAM_ID" ]; }; then
+            echo "::error::Release tags must be notarized: set APPLE_API_KEY_P8/ID/ISSUER or APPLE_ID/APP_SPECIFIC_PASSWORD/TEAM_ID"
+            exit 1
+          fi
+      - name: Package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$CSC_LINK" ]; then
+            if [ "$PUBLISH" = always ]; then echo "::error::Refusing to publish an unsigned build"; exit 1; fi
+            unset CSC_LINK CSC_KEY_PASSWORD
+            export CSC_IDENTITY_AUTO_DISCOVERY=false SKIP_NOTARIZE=1
+            echo "::warning::No macOS signing certificate in secrets, building unsigned"
+          fi
+          if [ -n "$APPLE_API_KEY_P8" ]; then
+            printf '%s\n' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+            export APPLE_API_KEY="$RUNNER_TEMP/AuthKey.p8"
+          fi
+          $PNPM dist --publish "$PUBLISH"
+      - name: Verify signature
+        env:
+          SIGNED: ${{ secrets.MAC_CERT_P12_BASE64 != '' || startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          if [ "$SIGNED" != true ]; then exit 0; fi
+          app="$(ls -d dist/mac-arm64/*.app | head -1)"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          spctl --assess --type execute --verbose=2 "$app"
+          for attempt in 1 2 3 4 5; do
+            if xcrun stapler validate "$app"; then exit 0; fi
+            sleep 20
+          done
+          exit 1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: mac
+          if-no-files-found: error
+          path: |
+            apps/orchestrator/dist/*.dmg
+            apps/orchestrator/dist/*.zip
+            apps/orchestrator/dist/*.blockmap
+            apps/orchestrator/dist/latest-mac.yml
+
+  win:
+    needs: draft
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: windows-2022
+    timeout-minutes: 60
+    environment: signing
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: apps/orchestrator
+    env:
+      SIGNED: ${{ secrets.CERTUM_OTP != '' }}
+      RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Require signing on release tags
+        if: env.RELEASE == 'true'
+        env:
+          CERTUM_EMAIL: ${{ secrets.CERTUM_EMAIL }}
+          CERTUM_OTP: ${{ secrets.CERTUM_OTP }}
+          SATURA_WIN_PUBLISHER: ${{ vars.SATURA_WIN_PUBLISHER }}
+        run: |
+          if (-not $env:CERTUM_OTP -or -not $env:CERTUM_EMAIL -or -not $env:SATURA_WIN_PUBLISHER) {
+            Write-Host "::error::Release tags must be signed: CERTUM_EMAIL, CERTUM_OTP and vars.SATURA_WIN_PUBLISHER are required"
+            exit 1
+          }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: ssign
+        if: env.SIGNED == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'ssign'
+          gh release download $env:SSIGN_VERSION -R Le-Syl21/ssign -p 'ssign-windows-x86_64.zip' -D $dir
+          $zip = Join-Path $dir 'ssign-windows-x86_64.zip'
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne $env:SSIGN_SHA256) { throw "ssign checksum mismatch: $hash" }
+          Expand-Archive $zip -DestinationPath $dir
+          Add-Content $env:GITHUB_PATH $dir
+      - name: Native helpers
+        run: |
+          ./resources/winhook/build-win.ps1
+          ../../packages/saturaspace-engine/.native/sharedsurface/build-win.ps1
+      - name: Install
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: corepack pnpm@10.34.9 install --frozen-lockfile
+      - name: Package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CERTUM_EMAIL: ${{ secrets.CERTUM_EMAIL }}
+          CERTUM_OTP: ${{ secrets.CERTUM_OTP }}
+          SATURA_WIN_PUBLISHER: ${{ vars.SATURA_WIN_PUBLISHER }}
+        run: |
+          if ($env:SIGNED -eq 'true') { $env:SATURA_WIN_SIGN = '1' }
+          elseif ($env:PUBLISH -eq 'always') { Write-Host "::error::Refusing to publish an unsigned build"; exit 1 }
+          else {
+            Remove-Item Env:CERTUM_OTP -ErrorAction SilentlyContinue
+            Write-Host "::warning::No Certum secrets, building unsigned"
+          }
+          corepack pnpm@10.34.9 dist --publish $env:PUBLISH
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify signature
+        if: env.SIGNED == 'true' || env.RELEASE == 'true'
+        run: |
+          $files = @(Get-ChildItem dist\*.exe) + @(Get-ChildItem dist\win-unpacked\*.exe) + @(Get-ChildItem dist\win-unpacked\resources\winhook\*.dll)
+          foreach ($f in $files) {
+            $s = Get-AuthenticodeSignature $f.FullName
+            Write-Host "$($f.Name): $($s.Status) $($s.SignerCertificate.Subject)"
+            if ($s.Status -ne 'Valid') { throw "$($f.Name) is not validly signed" }
+          }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: win
+          if-no-files-found: error
+          path: |
+            apps/orchestrator/dist/*.exe
+            apps/orchestrator/dist/*.blockmap
+            apps/orchestrator/dist/latest.yml

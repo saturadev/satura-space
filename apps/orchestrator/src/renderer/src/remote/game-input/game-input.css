@@ -1,0 +1,386 @@
+.gi-root,
+.gi-root *,
+.gi-host,
+.gi-host * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+
+.gi-root {
+  pointer-events: none;
+}
+
+.gi-host {
+  background: var(--canvas);
+}
+
+.gi-root > * {
+  pointer-events: auto;
+}
+
+
+
+.gi-chip {
+  display: inline-flex;
+  min-width: 32px;
+  height: 30px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: var(--radius-control);
+  padding: 0 10px;
+  background: var(--elevated);
+  color: var(--ink);
+  font-size: 12.5px;
+}
+
+
+.gi-menu-icon {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-control);
+  background: var(--elevated);
+  color: var(--ink);
+}
+
+
+.gi-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border-radius: 9999px;
+  background: rgb(0 0 0 / 0.32);
+  color: rgb(255 255 255 / 0.92);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+  transition: transform 80ms ease, background 80ms ease;
+}
+
+.gi-button:active:not(.gi-edit),
+.gi-button[data-pressed]:not(.gi-edit),
+.gi-button.gi-on {
+  background: color-mix(in srgb, var(--accent) 70%, transparent);
+  color: var(--accent-fg);
+  transform: scale(0.94);
+}
+
+
+
+.gi-stick-rest {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  pointer-events: none;
+  background-color: rgb(0 0 0 / 0.14);
+  box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.18);
+  background: radial-gradient(circle, rgb(255 255 255 / 0.07) 0 30%, transparent 31%);
+  transition: opacity 120ms ease;
+}
+
+.gi-stick-zone {
+  border-radius: 0;
+}
+
+
+
+
+.gi-stick {
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.08);
+  box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.3);
+}
+
+.gi-knob {
+  position: absolute;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.5);
+}
+
+.gi-edit {
+  outline: 1.5px dashed rgb(255 255 255 / 0.55);
+  outline-offset: 3px;
+}
+
+.gi-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.gi-row {
+  min-height: 40px;
+  border-radius: var(--radius-control);
+  padding: 6px 10px;
+  background: var(--elevated);
+}
+
+.gi-row.gi-on {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+
+.gi-pad {
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+
+
+
+
+
+
+.gi-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 15px;
+  height: 15px;
+  border-radius: 9999px;
+  padding: 0 4px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 10px;
+  line-height: 15px;
+}
+
+.gi-panel {
+  background: var(--panel);
+  color: var(--ink-2);
+  box-shadow: inset 1px 0 0 rgb(255 255 255 / 0.06);
+}
+
+.gi-panel-body {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gi-panel-body * {
+  touch-action: pan-y;
+}
+
+.gi-switch {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 9999px;
+  background: var(--sunken);
+  transition: background 120ms ease;
+}
+
+.gi-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: var(--ink-2);
+  transition: transform 120ms ease;
+}
+
+.gi-switch-on {
+  background: var(--accent);
+}
+
+.gi-switch-on::after {
+  background: var(--accent-fg);
+  transform: translateX(14px);
+}
+
+.gi-axis {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(0 0 0 / 0.32);
+  color: rgb(255 255 255 / 0.92);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+}
+
+.gi-axis-half {
+  display: flex;
+  width: 30%;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.gi-axis-half.gi-on {
+  background: color-mix(in srgb, var(--accent) 70%, transparent);
+  color: var(--accent-fg);
+}
+
+
+
+.gi-hold-ring circle {
+  fill: none;
+  stroke: var(--accent-fg);
+  stroke-width: 2.2;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  opacity: 0;
+}
+
+.gi-button[data-gi-holding] .gi-hold-ring circle {
+  opacity: 0.9;
+  animation: gi-hold var(--gi-hold) linear forwards;
+}
+
+@keyframes gi-hold {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+
+
+.gi-label {
+  display: flex;
+  max-width: 100%;
+  flex-direction: column;
+  align-items: center;
+  font-weight: 600;
+  line-height: 1.08;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.gi-label small {
+  margin-top: 1px;
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.gi-stick-rest .gi-label {
+  color: rgb(255 255 255 / 0.5);
+  font-weight: 500;
+}
+
+.gi-axis .gi-label {
+  min-width: 0;
+  flex: 1;
+  justify-content: center;
+}
+
+.gi-controls {
+  display: contents;
+}
+
+.gi-controls > * {
+  transition: opacity 240ms ease, transform 240ms ease;
+}
+
+.gi-preview > * {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.gi-icon,
+.gi-icon-slot {
+  display: flex;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+}
+
+.gi-icon {
+  background: rgb(255 255 255 / 0.06);
+  color: var(--ink-3);
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.gi-icon:active,
+.gi-icon[data-pressed],
+.gi-icon.gi-icon-on {
+  background: var(--elevated);
+  color: var(--ink);
+}
+
+.gi-cluster {
+  pointer-events: auto;
+}
+
+.gi-hint {
+  color: var(--ink-3);
+  font-size: 11.5px;
+  line-height: 1.25;
+}
+
+.gi-edit-surface {
+  z-index: 7;
+  touch-action: none;
+}
+
+.gi-idle {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #000;
+  box-shadow: 0 0 0 1px #000;
+  animation: gi-fade 240ms ease;
+}
+
+.gi-play {
+  display: flex;
+  width: 64px;
+  height: 64px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding-left: 4px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.35);
+  pointer-events: auto;
+  transition: transform 120ms ease, opacity 160ms ease;
+}
+
+.gi-play:active,
+.gi-play[data-pressed] {
+  transform: scale(0.94);
+}
+
+.gi-play:disabled {
+  opacity: 0.4;
+}
+
+.gi-play-busy {
+  animation: gi-pulse 900ms ease-in-out infinite;
+}
+
+.gi-idle-note {
+  color: rgb(255 255 255 / 0.62);
+  font-size: 12px;
+}
+
+@keyframes gi-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes gi-pulse {
+  50% {
+    transform: scale(0.92);
+    opacity: 0.7;
+  }
+}

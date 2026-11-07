@@ -1,0 +1,29 @@
+Satura Space
+Copyright 2026 Satura Space contributors
+
+Licensed under the Apache License, Version 2.0 (see LICENSE), except packages/companion-app (the
+Satura Remote relay and its phone entry pages), which is licensed under the Elastic License 2.0 (see
+packages/companion-app/LICENSE).
+
+This repository includes third-party code under its own license:
+
+- Visual Studio Code, Floating UI, Orca, Playwright, QR Code generator library, Noto Sans Symbols and
+  Noto Sans Math: see apps/orchestrator/THIRD_PARTY_NOTICES.md.
+- Inter (SIL OFL 1.1, The Inter Project Authors) and JetBrains Mono (SIL OFL 1.1, The JetBrains Mono
+  Project Authors) in apps/orchestrator/src/renderer/src/assets/fonts: see
+  apps/orchestrator/THIRD_PARTY_NOTICES.md.
+- "Material product sounds" by Google (CC BY 4.0), the chime-*.wav files in
+  apps/orchestrator/src/renderer/src/assets/sounds: see apps/orchestrator/THIRD_PARTY_NOTICES.md.
+- Lib.Harmony 2.4.2 (MIT, Andreas Pardeike, with the MonoMod, Mono.Cecil and Iced code it bundles),
+  shipped renamed as SaturaSpace.Vendor.Harmony.dll.
+- Microsoft.CodeAnalysis and Microsoft.CodeAnalysis.CSharp 4.8.0, System.Collections.Immutable,
+  System.Reflection.Metadata and System.Runtime.CompilerServices.Unsafe (MIT, .NET Foundation and
+  Contributors), shipped renamed as SaturaSpace.Vendor.*.dll. The originals are in
+  tools/engine-vendor/upstream. Copyrights and the license text for these: see
+  apps/orchestrator/THIRD_PARTY_NOTICES.md.
+- Unity Native Plugin API headers in packages/saturaspace-engine/.native/sharedsurface/UnityPluginAPI
+  (Unity Companion License).
+- meshoptimizer 1.1 encoder (MIT, Arseny Kapoulkine) in
+  apps/orchestrator/src/landing-demos/record/vendor, with its license beside it.
+- jsQR 1.4.0 (Apache-2.0, Cosmo Wolfe) in packages/companion-app/relay/m/vendor, with its license
+  beside it.

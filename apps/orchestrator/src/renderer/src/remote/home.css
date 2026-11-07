@@ -1,0 +1,23 @@
+@import 'tailwindcss';
+@import './web-shell/shell.css';
+@source '.';
+@custom-variant active (&:is(:active, [data-pressed]));
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #000;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input {
+  -webkit-user-select: text;
+  user-select: text;
+}

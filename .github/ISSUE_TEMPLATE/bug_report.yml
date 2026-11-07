@@ -1,0 +1,116 @@
+name: Bug report
+description: Something in Satura Space is broken, crashing, or not behaving the way it should.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a report. A bug we can reproduce is the most useful thing you can send.
+
+        A couple of things worth knowing before you start:
+
+        - **This is public.** Logs and screenshots can leak file paths and project names. Redact what you'd rather not share.
+        - **Never post a password or API token here.**
+        - **Security vulnerabilities** don't go in an issue. Report them privately as [SECURITY.md](https://github.com/saturadev/satura-space/blob/main/SECURITY.md) describes.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before filing
+      options:
+        - label: I searched the [existing issues](https://github.com/saturadev/satura-space/issues?q=is%3Aissue) and this isn't already reported.
+          required: true
+        - label: I'm on the latest version of Satura Space.
+          required: false
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug, and what you expected instead.
+      placeholder: |
+        Launching a second Unity instance leaves the stream black, while the first one keeps rendering fine.
+        I expected both instances to stream.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: |
+        Number them, starting from a freshly launched app. If it only happens sometimes, say roughly how often:
+        "about 1 in 5 launches" helps.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      description: A rough guess is fine. We'll relabel it if needed.
+      options:
+        - Agents & terminals
+        - Unity launch & live stream
+        - Multiplayer clones
+        - Code editor, search & git
+        - Projects, worktrees & windows
+        - Updates & installation
+        - Satura Remote
+        - Performance & resource usage
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Satura Space version
+      description: The **Report a bug** button inside the app fills this in for you.
+      placeholder: e.g. 3.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: The **Report a bug** button fills this in too.
+      placeholder: e.g. macOS 15.5 (Apple Silicon), or Windows 11 (build 26100, x64)
+    validations:
+      required: true
+
+  - type: input
+    id: unity-version
+    attributes:
+      label: Unity version
+      description: Only if the bug involves a Unity project. Leave blank otherwise.
+      placeholder: e.g. 6000.0.32f1
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Paste the relevant part, or drag the file in to attach it.
+
+        - Unity: **Open Logs** in the Unity Console tab, or `.sspace/.mcp_logs/console.log` and `.sspace/.mcp_rawstream_editor.log` in your project.
+        - Terminals: `~/Library/Application Support/satura-space/daemon/daemon.log` on macOS, `%APPDATA%\satura-space\daemon\daemon.log` on Windows.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots, screen recording, or anything else
+      description: A five-second clip of a rendering or streaming bug beats three paragraphs describing it. Drag files right into this box.
+    validations:
+      required: false

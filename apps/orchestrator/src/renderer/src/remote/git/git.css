@@ -1,0 +1,32 @@
+.phone-git {
+  font-family: var(--font-ui);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.phone-git .pg-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.phone-git .pg-press {
+  cursor: default;
+  -webkit-touch-callout: none;
+}
+
+.phone-git .pg-press:active,
+.phone-git .pg-press[data-pressed] {
+  background: rgb(255 255 255 / 0.06);
+}
+
+.phone-git .scm-row {
+  background: var(--canvas);
+}
+
+.phone-git .pg-graph > svg > circle {
+  stroke: var(--canvas);
+}
+
+.phone-git .pg-graph.current > svg > circle:last-child,
+.phone-git .pg-graph.synthetic > svg > circle:last-child {
+  fill: var(--canvas);
+}

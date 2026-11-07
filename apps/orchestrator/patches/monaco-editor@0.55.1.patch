@@ -1,0 +1,24 @@
+diff --git a/esm/vs/base/browser/domSanitize.js b/esm/vs/base/browser/domSanitize.js
+index 95061a20c8ecd48ff3ca732dbb1848cd213f7965..4bbb061da3fc2115cfc1917759b1660959dd308f 100644
+--- a/esm/vs/base/browser/domSanitize.js
++++ b/esm/vs/base/browser/domSanitize.js
+@@ -1,6 +1,6 @@
+ import { Schemas } from '../common/network.js';
+ import { reset } from './dom.js';
+-import purify from './dompurify/dompurify.js';
++import purify from 'dompurify';
+ 
+ /*---------------------------------------------------------------------------------------------
+  *  Copyright (c) Microsoft Corporation. All rights reserved.
+diff --git a/esm/vs/base/browser/domStylesheets.js b/esm/vs/base/browser/domStylesheets.js
+index 7153d126afdae6f67c10d8a5a3b67b9fba278cef..eedaa926f3ea3311b63318e11d78196c58f3fe29 100644
+--- a/esm/vs/base/browser/domStylesheets.js
++++ b/esm/vs/base/browser/domStylesheets.js
+@@ -35,6 +35,7 @@ class WrappedStyleElement {
+     }
+     dispose() {
+         if (this._styleSheet) {
++            globalStylesheets.delete(this._styleSheet);
+             this._styleSheet.remove();
+             this._styleSheet = undefined;
+         }

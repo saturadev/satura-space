@@ -1,0 +1,410 @@
+@import './progress-bar.css';
+
+:root {
+  --m-quick: 160ms;
+  --m-base: 280ms;
+  --m-slow: 420ms;
+  --m-exit: 200ms;
+  --m-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --m-in: cubic-bezier(0.4, 0, 1, 1);
+  --m-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --m-spring: cubic-bezier(0.2, 0.9, 0.3, 1.05);
+  --ws-kb: 0px;
+  --ws-vv-top: 0px;
+  --ws-vv-h: 100dvh;
+}
+
+@supports (animation-timing-function: linear(0, 1)) {
+  :root {
+    --m-spring: linear(0, 0.044, 0.15, 0.285, 0.427, 0.562, 0.681, 0.781, 0.861, 0.922, 0.966, 0.996, 1.015, 1.025, 1.03, 1.03, 1.028, 1.024, 1.02, 1.016, 1.012, 1.008, 1);
+  }
+}
+
+.ws-fade-in,
+.ws-rise,
+.ws-drop,
+.ws-pop,
+.ws-sheet,
+.ws-screen,
+.ws-swap,
+.ws-item {
+  animation-duration: var(--m-base);
+  animation-timing-function: var(--m-out);
+  animation-fill-mode: backwards;
+}
+
+.ws-fade-in {
+  animation-name: m-fade;
+  animation-duration: var(--m-quick);
+}
+
+.ws-rise {
+  animation-name: m-rise;
+  animation-timing-function: var(--m-spring);
+  animation-duration: var(--m-slow);
+}
+
+.ws-drop {
+  animation-name: m-drop;
+  animation-timing-function: var(--m-spring);
+  animation-duration: var(--m-slow);
+}
+
+.ws-pop {
+  animation-name: m-pop;
+  animation-timing-function: var(--m-spring);
+  animation-duration: var(--m-slow);
+}
+
+.ws-sheet {
+  animation-name: m-sheet;
+  animation-timing-function: var(--m-sheet);
+  animation-duration: var(--m-slow);
+  transition: height var(--m-base) var(--m-out);
+}
+
+.ws-screen {
+  animation-name: m-screen;
+  animation-timing-function: var(--m-sheet);
+  animation-duration: var(--m-slow);
+}
+
+.ws-swap {
+  animation-name: m-swap;
+}
+
+.ws-item {
+  animation-name: m-item;
+  animation-delay: calc(min(var(--i, 0), 8) * 28ms);
+}
+
+[data-leaving] .ws-fade-in,
+[data-leaving].ws-fade-in,
+[data-leaving] .ws-rise,
+[data-leaving] .ws-drop,
+[data-leaving] .ws-pop,
+[data-leaving] .ws-sheet,
+[data-leaving] .ws-screen,
+[data-leaving] .ws-swap,
+[data-leaving].ws-swap,
+[data-leaving] .ws-item {
+  animation-duration: var(--m-exit);
+  animation-timing-function: var(--m-in);
+  animation-delay: 0s;
+  animation-fill-mode: forwards;
+}
+
+[data-leaving] .ws-fade-in,
+[data-leaving].ws-fade-in {
+  animation-name: m-fade-out;
+}
+
+[data-leaving] .ws-rise {
+  animation-name: m-rise-out;
+}
+
+[data-leaving] .ws-drop {
+  animation-name: m-drop-out;
+}
+
+[data-leaving] .ws-pop {
+  animation-name: m-pop-out;
+}
+
+[data-leaving] .ws-sheet {
+  animation-name: m-sheet-out;
+  animation-timing-function: cubic-bezier(0.6, 0, 1, 1);
+}
+
+[data-leaving] .ws-screen {
+  animation-name: m-screen-out;
+  animation-timing-function: cubic-bezier(0.6, 0, 1, 1);
+}
+
+[data-leaving] .ws-swap,
+[data-leaving].ws-swap,
+[data-leaving] .ws-item {
+  animation-name: m-swap-out;
+}
+
+.ws-xfade > [data-leaving].ws-swap {
+  animation-duration: var(--m-quick);
+}
+
+.ws-xfade > .ws-swap:not([data-leaving]) {
+  animation-delay: 70ms;
+}
+
+@keyframes m-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes m-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+}
+
+@keyframes m-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.96);
+  }
+}
+
+@keyframes m-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes m-pop-out {
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes m-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes m-rise-out {
+  to {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+}
+
+@keyframes m-drop-out {
+  to {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.97);
+  }
+}
+
+@keyframes m-sheet-out {
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes m-screen-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes m-swap-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+
+@keyframes m-sheet {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes m-screen {
+  from {
+    transform: translateX(100%);
+    box-shadow: -24px 0 48px rgb(0 0 0 / 0);
+  }
+  to {
+    box-shadow: -24px 0 48px rgb(0 0 0 / 0.5);
+  }
+}
+
+@keyframes m-swap {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+}
+
+@keyframes m-item {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+:where(button, a[href], [role='button'], [role='switch'], [role='menuitem'], [role='tab'], [data-tap], summary, select, label) {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where([data-pressed]):not(.ws-press, [class*='active:'], .remote-panels-row, .pg-press, [data-pierce-item], [data-phone-expand-btn], .gi-button, .gi-icon, .gi-play) {
+  opacity: 0.62;
+  transition: none;
+}
+
+@property --remote-arc {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.remote-pending,
+[data-leaving-page] {
+  position: relative;
+  pointer-events: none;
+}
+
+.remote-pending > *,
+[data-leaving-page] > * {
+  opacity: 0.45;
+  transition: opacity 120ms;
+}
+
+.remote-pending::after,
+[data-leaving-page]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(from var(--remote-arc), transparent 0 62%, var(--accent, #8196ff) 88%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: remote-arc 0.9s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes remote-arc {
+  to {
+    --remote-arc: 360deg;
+  }
+}
+
+.ws-xfade {
+  display: grid;
+}
+
+.ws-xfade > * {
+  grid-area: 1 / 1;
+}
+
+.ws-layer {
+  position: fixed;
+  inset: 0;
+}
+
+.ws-kb-bottom {
+  transform: translateY(calc(-1 * var(--ws-kb)));
+  transition: transform var(--m-base) var(--m-out);
+}
+
+.ws-kb-center {
+  transform: translateY(calc((var(--ws-vv-top) - var(--ws-kb)) / 2));
+  transition: transform var(--m-base) var(--m-out);
+}
+
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-group(root) {
+  animation-duration: var(--m-slow);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--m-base);
+  animation-timing-function: var(--m-out);
+}
+
+html[data-nav='push']::view-transition-old(root),
+html[data-nav='pop']::view-transition-old(root),
+html[data-nav='push']::view-transition-new(root),
+html[data-nav='pop']::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation-duration: var(--m-slow);
+  animation-timing-function: var(--m-sheet);
+}
+
+html[data-nav='push']::view-transition-old(root) {
+  animation-name: m-nav-under;
+}
+
+html[data-nav='push']::view-transition-new(root) {
+  animation-name: m-nav-over;
+}
+
+html[data-nav='pop']::view-transition-old(root) {
+  z-index: 1;
+  animation-name: m-nav-over;
+  animation-direction: reverse;
+}
+
+html[data-nav='pop']::view-transition-new(root) {
+  animation-name: m-nav-under;
+  animation-direction: reverse;
+}
+
+@keyframes m-nav-over {
+  from {
+    transform: translateX(100%);
+    box-shadow: -20px 0 40px rgb(0 0 0 / 0);
+  }
+  to {
+    box-shadow: -20px 0 40px rgb(0 0 0 / 0.55);
+  }
+}
+
+@keyframes m-nav-under {
+  to {
+    transform: translateX(-28%);
+    filter: brightness(0.6);
+  }
+}
+
+html[data-nav] .ws-swap {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --m-quick: 120ms;
+    --m-base: 160ms;
+    --m-slow: 180ms;
+    --m-exit: 120ms;
+  }
+
+  .ws-rise,
+  .ws-drop,
+  .ws-pop,
+  .ws-sheet,
+  .ws-screen,
+  .ws-swap,
+  .ws-item {
+    animation-name: m-fade;
+    animation-delay: 0s;
+  }
+
+  [data-leaving] .ws-rise,
+  [data-leaving] .ws-drop,
+  [data-leaving] .ws-pop,
+  [data-leaving] .ws-sheet,
+  [data-leaving] .ws-screen,
+  [data-leaving] .ws-swap,
+  [data-leaving].ws-swap,
+  [data-leaving] .ws-item {
+    animation-name: m-fade-out;
+  }
+
+  .ws-kb-bottom,
+  .ws-kb-center {
+    transition: none;
+  }
+}

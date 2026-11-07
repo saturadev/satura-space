@@ -1,0 +1,127 @@
+diff --git a/deps/winpty/src/winpty.gyp b/deps/winpty/src/winpty.gyp
+index 1ac5758bedd8cf54f32280dea4e4aeb5afdee30d..9a3553e630337678b3ddcdf1f4746bd56292fbdb 100644
+--- a/deps/winpty/src/winpty.gyp
++++ b/deps/winpty/src/winpty.gyp
+@@ -41,7 +41,7 @@
+                 '-luser32',
+             ],
+             'msvs_configuration_attributes': {
+-                'SpectreMitigation': 'Spectre'
++                'SpectreMitigation': 'false'
+             },
+             'msvs_settings': {
+                 # Specify this setting here to override a setting from somewhere
+@@ -143,7 +143,7 @@
+                 '-luser32',
+             ],
+             'msvs_configuration_attributes': {
+-                'SpectreMitigation': 'Spectre'
++                'SpectreMitigation': 'false'
+             },
+             'msvs_settings': {
+                 # Specify this setting here to override a setting from somewhere
+diff --git a/lib/unixTerminal.js b/lib/unixTerminal.js
+index 1ec12f796a822c78fba9ad7f6448c3987e325c23..cec8b67aef02f8199e5606a0d257088bf1865877 100644
+--- a/lib/unixTerminal.js
++++ b/lib/unixTerminal.js
+@@ -28,8 +28,12 @@ var native = utils_1.loadNativeModule('pty');
+ var pty = native.module;
+ var helperPath = native.dir + '/spawn-helper';
+ helperPath = path.resolve(__dirname, helperPath);
+-helperPath = helperPath.replace('app.asar', 'app.asar.unpacked');
+-helperPath = helperPath.replace('node_modules.asar', 'node_modules.asar.unpacked');
++if (!helperPath.includes('app.asar.unpacked')) {
++    helperPath = helperPath.replace('app.asar', 'app.asar.unpacked');
++}
++if (!helperPath.includes('node_modules.asar.unpacked')) {
++    helperPath = helperPath.replace('node_modules.asar', 'node_modules.asar.unpacked');
++}
+ var DEFAULT_FILE = 'sh';
+ var DEFAULT_NAME = 'xterm';
+ var DESTROY_SOCKET_TIMEOUT_MS = 200;
+diff --git a/src/unix/pty.cc b/src/unix/pty.cc
+index 7b4b9e1f990fbf95b51528bb56dc9717f5b87532..615055df330043b35a38940ab2ba3f1c52a1e091 100644
+--- a/src/unix/pty.cc
++++ b/src/unix/pty.cc
+@@ -167,6 +167,9 @@ void SetupExitCallback(Napi::Env env, Napi::Function cb, pid_t pid) {
+         }
+       }
+     }
++    if (kq != -1) {
++      close(kq);
++    }
+ #else
+     while (true) {
+       errno = 0;
+@@ -684,6 +687,13 @@ pty_getproc(int fd, char *tty) {
+ #endif
+ 
+ #if defined(__APPLE__)
++static void
++pty_close_low_fds(int* low_fds, size_t count) {
++  for (size_t i = 0; i <= count && i < 3; i++) {
++    close(low_fds[i]);
++  }
++}
++
+ static void
+ pty_posix_spawn(char** argv, char** env,
+                 const struct termios *termp,
+@@ -706,11 +716,13 @@ pty_posix_spawn(char** argv, char** env,
+               POSIX_SPAWN_SETSID;
+   *master = posix_openpt(O_RDWR);
+   if (*master == -1) {
++    pty_close_low_fds(low_fds, count);
+     return;
+   }
+ 
+   int res = grantpt(*master) || unlockpt(*master);
+   if (res == -1) {
++    pty_close_low_fds(low_fds, count);
+     return;
+   }
+ 
+@@ -719,17 +731,21 @@ pty_posix_spawn(char** argv, char** env,
+   char slave_pty_name[128];
+   res = ioctl(*master, TIOCPTYGNAME, slave_pty_name);
+   if (res == -1) {
++    pty_close_low_fds(low_fds, count);
+     return;
+   }
+ 
+   slave = open(slave_pty_name, O_RDWR | O_NOCTTY);
+   if (slave == -1) {
++    pty_close_low_fds(low_fds, count);
+     return;
+   }
+ 
+   if (termp) {
+     res = tcsetattr(slave, TCSANOW, termp);
+     if (res == -1) {
++      close(slave);
++      pty_close_low_fds(low_fds, count);
+       return;
+     };
+   }
+@@ -737,6 +753,8 @@ pty_posix_spawn(char** argv, char** env,
+   if (winp) {
+     res = ioctl(slave, TIOCSWINSZ, winp);
+     if (res == -1) {
++      close(slave);
++      pty_close_low_fds(low_fds, count);
+       return;
+     }
+   }
+@@ -777,10 +795,8 @@ pty_posix_spawn(char** argv, char** env,
+ done:
+   posix_spawn_file_actions_destroy(&acts);
+   posix_spawnattr_destroy(&attrs);
+-
+-  for (; count > 0; count--) {
+-    close(low_fds[count]);
+-  }
++  close(slave);
++  pty_close_low_fds(low_fds, count);
+ }
+ #endif
+ 

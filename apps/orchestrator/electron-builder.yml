@@ -1,0 +1,214 @@
+# electron-builder configuration for the Satura Space orchestrator.
+#
+# Auto-loaded by electron-builder when invoked from this directory (apps/orchestrator),
+# so `electron-builder --dir` / `electron-builder` pick it up with no extra flags.
+# Full build sequence + codesigning/notarization steps live in PACKAGING.md.
+
+appId: com.saturaspace.app
+productName: Satura Space
+copyright: Copyright (c) 2026 Satura Space contributors
+# Space-free artifact names for clean download URLs (e.g. satura-space-1.1.5-arm64.dmg).
+artifactName: ${name}-${version}-${arch}.${ext}
+
+# node-pty is already rebuilt at `pnpm install` time (via postinstall → electron-rebuild).
+# Disabling electron-builder's own rebuild pass avoids a broken pnpm hoisting walk.
+npmRebuild: false
+
+# Notarization runs in this afterSign hook (build/notarize.cjs) via the `satura-notary`
+# notarytool keychain profile — electron-builder's built-in `mac.notarize` can't read a
+# keychain profile, so it stays false and we notarize here. Set SKIP_NOTARIZE=1 to bypass
+# (e.g. a local unsigned `--dir` pack).
+afterSign: build/notarize.cjs
+
+directories:
+  # Final artifacts (.app / .dmg / .zip) -> apps/orchestrator/dist/ (gitignored).
+  output: dist
+  # entitlements + (future) icons live here; auto-excluded from the app bundle.
+  buildResources: build
+
+# What lands inside app.asar.
+#
+# We deliberately keep electron-builder's default `**/*` glob (which already pulls in
+# out/**, package.json, and the PRODUCTION node_modules tree — node-pty + node-addon-api,
+# the only native runtime deps). Listing ONLY negation patterns preserves that default;
+# adding a positive pattern would REPLACE it and is the classic way to accidentally drop
+# node_modules. The negations below just strip the TypeScript sources / tooling that
+# electron-vite has already compiled into out/**, plus the resources/ tree (those ship via
+# extraResources below — embedding them here too would double-bundle ~38 MB into the asar).
+files:
+  - '!src/**'
+  - '!scripts/**'
+  - '!resources/**'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!{.nvmrc,README.md,PACKAGING.md,electron-builder.yml}'
+  - '!{pnpm-lock.yaml,package-lock.json,yarn.lock}'
+  - '!dist2/**'
+  - '!windows-release/**'
+  - '!.electron-dist/**'
+
+# node-pty is a native module (compiled pty.node + prebuilds). Native addons cannot be
+# dlopen()'d from inside an asar archive, so unpack it to app.asar.unpacked/.
+# @vscode/ripgrep ships a standalone `rg` binary that we spawn for search-in-files; an
+# executable can't be run from inside the asar either, so unpack its bin/ as well. The
+# rgPath rewrite in src/main/search/rg-path.ts points at the unpacked copy at runtime.
+# native/shared-surface is our own node-gyp addon (shared_surface.node) that resolves the
+# Unity IOSurface for the zero-copy video transport — same dlopen-from-asar problem, so it
+# is unpacked too. shared-surface.ts rewrites app.asar -> app.asar.unpacked to load it.
+asarUnpack:
+  - '**/node_modules/node-pty/**'
+  - '**/node_modules/node-datachannel/**'
+  - '**/node_modules/@node-datachannel/**'
+  - '**/node_modules/@vscode/ripgrep/bin/**'
+  - 'native/shared-surface/**'
+  # The terminal daemon is child_process.fork()'d as a separate ELECTRON_RUN_AS_NODE process,
+  # which bypasses Electron's asar integration — so its entry AND every module it require()s must
+  # exist on disk (not inside app.asar). daemon-entry.js pulls a shared out/main/chunks/* file and
+  # the @xterm headless packages; node-pty is already unpacked above. Without these, the fork target
+  # is missing and the daemon exits code 1 ("[daemon] init failed"), leaving terminals blank.
+  - 'out/main/daemon-entry.js'
+  - 'out/main/chunks/**'
+  - '**/node_modules/@xterm/**'
+
+# The Unity engine package is identical on every platform, so it ships from the top-level
+# extraResources (electron-builder merges top-level + per-platform entries). The native
+# helpers differ by OS — winhook.dylib / satura-space-mcp on macOS vs unityhook.dll /
+# satura-space-mcp.exe on Windows — so they live under mac.extraResources / win.extraResources
+# below. resolveResource(...segments) in src/main/bundled-resources.ts reads these back from
+# process.resourcesPath, so the `to:` targets MUST match the segments it passes:
+#   resolveResource('winhook','winhook.dylib' | 'unityhook.dll') -> Resources/winhook/...
+#   resolveResource('mcp','satura-space-mcp' | 'satura-space-mcp.exe') -> Resources/mcp/...
+#   resolveResource('engine')                   -> Resources/engine/
+# The engine `from` reaches up to the monorepo package (repo/packages/saturaspace-engine).
+extraResources:
+  - from: ${env.SATURA_ENGINE_DIR}
+    to: engine
+    filter:
+      - '**/*'
+      - '!.native'
+      - '!.native/**'
+  - from: ../../LICENSE
+    to: LICENSE
+  - from: ../../NOTICE
+    to: NOTICE
+  - from: THIRD_PARTY_NOTICES.md
+    to: THIRD_PARTY_NOTICES.md
+
+electronFuses:
+  runAsNode: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+
+publish:
+  provider: github
+  owner: saturadev
+  repo: satura-space
+
+dmg:
+  # Background: generated by apps/orchestrator/scripts/gen-dmg-bg.py.
+  # Both 1x and @2x PNGs are committed under build/; electron-builder picks up the @2x
+  # automatically when a file named <background>@2x.png sits alongside the 1x file.
+  background: build/dmg-background.png
+  window:
+    width: 620
+    height: 430
+  # 120px icons with positioned centroids — left=app, right=Applications shortcut.
+  iconSize: 120
+  iconTextSize: 12
+  contents:
+    - x: 175
+      y: 195
+      type: file
+    - x: 445
+      y: 195
+      type: link
+      path: /Applications
+
+mac:
+  category: public.app-category.developer-tools
+  # App / dock / .dmg icon — electron-builder generates the multi-resolution iconset from this .icns.
+  icon: build/icon.icns
+  # macOS-only native helpers (the engine ships from the top-level extraResources).
+  # winhook.dylib is DYLD_INSERT_LIBRARIES-injected; satura-space-mcp is the PyInstaller binary.
+  extraResources:
+    - from: resources/winhook
+      to: winhook
+      filter:
+        - winhook.dylib
+    - from: resources/mcp
+      to: mcp
+      filter:
+        - satura-space-mcp
+  # Apple Silicon only (the bundled MCP binary + winhook.dylib are arm64-native, not universal).
+  target:
+    - target: dmg
+      arch:
+        - arm64
+    - target: zip
+      arch:
+        - arm64
+  # Hardened runtime is mandatory for notarization. The app itself only gets the V8 JIT
+  # entitlements; helpers and nested binaries (the PyInstaller MCP) keep the inherit plist.
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.inherit.plist
+  # Notarization is OFF by default so an unsigned local `npm run pack` (--dir) works with no
+  # Apple credentials. To actually sign + notarize for distribution, set the Apple env vars
+  # (APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID) and flip this to `true` — see
+  # PACKAGING.md. electron-builder reads those env vars automatically when notarize is enabled.
+  notarize: false
+
+win:
+  # App / taskbar / installer icon for Windows builds (multi-resolution .ico, 16–256px).
+  # Fuller rounded-square tile than the macOS squircle (Windows fills more of the canvas).
+  icon: build/icon.ico
+  # x64 NSIS installer. NSIS is the only electron-builder target electron-updater can
+  # auto-update (via latest.yml + .blockmap deltas), matching the macOS zip/dmg flow.
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # Signing runs through build/sign-win.cjs, which no-ops unless SATURA_WIN_SIGN=1 — so an
+  # unsigned local `npm run dist` still builds and self-updates, mirroring mac.notarize:false.
+  # The Certum cloud cert has no .pfx (the key lives in their HSM, reachable only through the
+  # SimplySign virtual smart-card), so CSC_LINK cannot work; the hook shells out to signtool
+  # against the cert in the Windows store instead. See PACKAGING.md §5.
+  # publisherName is injected by scripts/pack.mjs for signed builds only: baking it into
+  # unsigned builds' app-update.yml would pin a publisher those builds don't have and break
+  # their auto-update once a signed release lands.
+  signtoolOptions:
+    sign: build/sign-win.cjs
+    signingHashAlgorithms:
+      - sha256
+  # Additive: .exe files already sign by default, this pulls in our two native DLLs — the
+  # binaries most likely to draw AV false positives.
+  signExts:
+    - unityhook.dll
+    - SaturaSharedSurface.dll
+  #
+  # Windows-only native helpers (the engine ships from the top-level extraResources):
+  #   unityhook.dll   — LoadLibrary-injected into hidden GUI Unity editors/clones.
+  #   satura-space-mcp.exe — the PyInstaller MCP binary (gitignored; built before dist).
+  # The filters ship the built artifacts only, never the *.obj/*.c/*.m sources next to them.
+  extraResources:
+    - from: resources/winhook
+      to: winhook
+      filter:
+        - unityhook.dll
+    - from: resources/mcp
+      to: mcp
+      filter:
+        - satura-space-mcp.exe
+
+nsis:
+  # One-click, per-user install (no UAC prompt) — the fastest path for end users and the
+  # cleanest fit for an app that ships its own auto-updater.
+  oneClick: true
+  perMachine: false
+  createDesktopShortcut: always
+  shortcutName: ${productName}
+  # Installer name inherits the top-level artifactName (${name}-${version}-${arch}.${ext})
+  # -> satura-space-<version>-x64.exe, matching the DMG/ZIP naming for clean download URLs.

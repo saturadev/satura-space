@@ -1,0 +1,23 @@
+node_modules/
+out/
+dist/
+dist2/
+.electron-dist/
+# Windows release artifacts staged for out-of-band publish (built by electron-builder).
+windows-release/
+*.zip
+*.log
+.DS_Store
+# transient package.json / pnpm-lock backups from scripts/pack.mjs (the electron-builder guard)
+*.pkgbak
+
+# Bundled MCP binary: a ~22 MB PyInstaller artifact built from packages/mcp. It is
+# (re)built automatically by scripts/build-mcp.mjs when `npm run pack`/`dist` detect it is
+# stale vs the packages/mcp sources (see PACKAGING.md), never committed. The .build.json
+# sidecar records the source digest the binary was built from — the staleness check.
+# (resources/winhook/winhook.dylib + unityhook.dll stay tracked — leave them as-is.)
+resources/mcp/satura-space-mcp
+resources/mcp/satura-space-mcp.exe
+resources/mcp/*.build.json
+
+electron.vite.config.*.mjs

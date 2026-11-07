@@ -1,0 +1,334 @@
+/* Markdown preview styling, scoped under .satura-markdown. Tailwind v4 preflight resets list markers,
+   heading sizes, and margins globally, so these class rules restore document typography (class
+   selectors out-specify preflight's element selectors). Paired with the file viewer's MarkdownView.
+   Colours are driven by the theme tokens (index.css) so the preview follows the active theme — the
+   preview sits on `--canvas`. highlight.js token colours come from the `--md-hl-*` vars below, which
+   flip to a light palette for the light-family themes. */
+
+.satura-markdown {
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.65;
+  word-wrap: break-word;
+
+  /* highlight.js token palette — dark (github-dark-ish) by default. */
+  --md-hl-comment: #8b949e;
+  --md-hl-keyword: #ff7b72;
+  --md-hl-builtin: #ffa657;
+  --md-hl-string: #a5d6ff;
+  --md-hl-title: #d2a8ff;
+  --md-hl-number: #79c0ff;
+  --md-hl-name: #7ee787;
+  --md-hl-regexp: #ffa198;
+}
+
+/* Light-family themes get the github-light token palette so code stays readable on light surfaces. */
+:where(:root[data-theme='light'], :root[data-theme='sepia']) .satura-markdown {
+  --md-hl-comment: #6e7781;
+  --md-hl-keyword: #cf222e;
+  --md-hl-builtin: #953800;
+  --md-hl-string: #0a3069;
+  --md-hl-title: #8250df;
+  --md-hl-number: #0550ae;
+  --md-hl-name: #116329;
+  --md-hl-regexp: #82071e;
+}
+
+/* Headings */
+.satura-markdown h1,
+.satura-markdown h2,
+.satura-markdown h3,
+.satura-markdown h4,
+.satura-markdown h5,
+.satura-markdown h6 {
+  margin: 1.4em 0 0.6em;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.satura-markdown h1:first-child,
+.satura-markdown h2:first-child,
+.satura-markdown h3:first-child {
+  margin-top: 0;
+}
+.satura-markdown h1 {
+  font-size: 1.75em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--hairline);
+}
+.satura-markdown h2 {
+  font-size: 1.4em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--hairline);
+}
+.satura-markdown h3 {
+  font-size: 1.2em;
+}
+.satura-markdown h4 {
+  font-size: 1.05em;
+}
+.satura-markdown h5 {
+  font-size: 0.95em;
+}
+.satura-markdown h6 {
+  font-size: 0.9em;
+  color: var(--ink-3);
+}
+
+/* Paragraphs + inline */
+.satura-markdown p {
+  margin: 0 0 1em;
+}
+.satura-markdown strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+.satura-markdown em {
+  font-style: italic;
+}
+.satura-markdown del {
+  text-decoration: line-through;
+  color: var(--ink-3);
+}
+.satura-markdown a {
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+.satura-markdown a:hover {
+  text-decoration: underline;
+}
+
+/* Lists */
+.satura-markdown ul,
+.satura-markdown ol {
+  margin: 0 0 1em;
+  padding-left: 1.6em;
+}
+.satura-markdown ul {
+  list-style: disc;
+}
+.satura-markdown ul ul {
+  list-style: circle;
+}
+.satura-markdown ol {
+  list-style: decimal;
+}
+.satura-markdown li {
+  margin: 0.25em 0;
+}
+.satura-markdown li > ul,
+.satura-markdown li > ol {
+  margin: 0.25em 0;
+}
+/* GFM task lists */
+.satura-markdown li.task-list-item {
+  list-style: none;
+  margin-left: -1.3em;
+}
+.satura-markdown li.task-list-item input[type='checkbox'] {
+  margin: 0 0.5em 0 0;
+  vertical-align: middle;
+  accent-color: var(--accent);
+}
+
+/* Blockquote */
+.satura-markdown blockquote {
+  margin: 0 0 1em;
+  padding: 0.1em 1em;
+  color: var(--ink-3);
+  border-left: 3px solid var(--strong);
+}
+.satura-markdown blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* Horizontal rule */
+.satura-markdown hr {
+  margin: 1.6em 0;
+  border: 0;
+  border-top: 1px solid var(--hairline);
+}
+
+/* Tables */
+.satura-markdown table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  max-height: 80cqh;
+  overflow: auto;
+  margin: 0 0 1em;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.satura-markdown th,
+.satura-markdown td {
+  padding: 0.4em 0.85em;
+  border-right: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+}
+.satura-markdown tr > :last-child {
+  border-right: 0;
+}
+.satura-markdown tbody tr:last-child > * {
+  border-bottom: 0;
+}
+.satura-markdown th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: left;
+  background: color-mix(in srgb, var(--ink) 6%, var(--canvas));
+}
+.satura-markdown :is(td, th).tf-nw {
+  white-space: nowrap;
+}
+.satura-markdown :is(td, th).tf-long {
+  min-width: 16em;
+  white-space: normal;
+}
+.satura-markdown tr:nth-child(2n) td {
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+
+/* Inline code */
+.satura-markdown code {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.875em;
+}
+.satura-markdown :not(pre) > code {
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius-nested, 3px);
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+  color: var(--ink);
+}
+
+/* Code blocks */
+.satura-markdown .code-block-wrapper {
+  position: relative;
+  margin: 0 0 1em;
+}
+.satura-markdown pre {
+  margin: 0;
+  padding: 0.9em 1em;
+  overflow: auto;
+  border-radius: var(--radius-panel, 6px);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border: 1px solid var(--hairline);
+  line-height: 1.5;
+}
+.satura-markdown pre code {
+  display: block;
+  padding: 0;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 0.85em;
+}
+.satura-markdown .code-block-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-control, 5px);
+  color: var(--ink-3);
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease;
+  cursor: pointer;
+}
+.satura-markdown .code-block-wrapper:hover .code-block-copy-btn {
+  opacity: 1;
+}
+.satura-markdown .code-block-copy-btn:hover {
+  color: var(--ink);
+}
+
+/* Images */
+.satura-markdown img {
+  max-width: 100%;
+  border-radius: var(--radius-panel, 6px);
+}
+
+/* Misc */
+.satura-markdown kbd {
+  padding: 0.1em 0.4em;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8em;
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+  border: 1px solid var(--strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-nested, 3px);
+}
+.satura-markdown details {
+  margin: 0 0 1em;
+}
+.satura-markdown summary {
+  cursor: pointer;
+}
+
+/* highlight.js — token colours come from the theme-driven --md-hl-* vars above. */
+.satura-markdown .hljs-comment,
+.satura-markdown .hljs-quote {
+  color: var(--md-hl-comment);
+  font-style: italic;
+}
+.satura-markdown .hljs-keyword,
+.satura-markdown .hljs-selector-tag,
+.satura-markdown .hljs-type {
+  color: var(--md-hl-keyword);
+}
+.satura-markdown .hljs-built_in,
+.satura-markdown .hljs-class .hljs-title,
+.satura-markdown .hljs-title.class_ {
+  color: var(--md-hl-builtin);
+}
+.satura-markdown .hljs-string,
+.satura-markdown .hljs-attr,
+.satura-markdown .hljs-template-tag,
+.satura-markdown .hljs-template-variable,
+.satura-markdown .hljs-addition {
+  color: var(--md-hl-string);
+}
+.satura-markdown .hljs-title,
+.satura-markdown .hljs-title.function_,
+.satura-markdown .hljs-section {
+  color: var(--md-hl-title);
+}
+.satura-markdown .hljs-number,
+.satura-markdown .hljs-literal,
+.satura-markdown .hljs-variable,
+.satura-markdown .hljs-symbol,
+.satura-markdown .hljs-bullet {
+  color: var(--md-hl-number);
+}
+.satura-markdown .hljs-attribute,
+.satura-markdown .hljs-meta {
+  color: var(--md-hl-number);
+}
+.satura-markdown .hljs-name,
+.satura-markdown .hljs-selector-id,
+.satura-markdown .hljs-selector-class {
+  color: var(--md-hl-name);
+}
+.satura-markdown .hljs-regexp,
+.satura-markdown .hljs-deletion {
+  color: var(--md-hl-regexp);
+}
+.satura-markdown .hljs-emphasis {
+  font-style: italic;
+}
+.satura-markdown .hljs-strong {
+  font-weight: 600;
+}

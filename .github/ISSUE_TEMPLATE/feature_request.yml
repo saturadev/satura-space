@@ -1,0 +1,61 @@
+name: Feature request
+description: Suggest something Satura Space should do, or something it does that could be better.
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Good feature requests start with the problem. The workflow that's painful today
+        tells us far more than a proposed menu item. Tell us what you were trying to get done.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before filing
+      options:
+        - label: I searched the [existing requests](https://github.com/saturadev/satura-space/issues?q=is%3Aissue+label%3Aenhancement) and this isn't one of them.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's the problem?
+      description: What are you trying to do, and where does the app get in your way today?
+      placeholder: |
+        When four agents are running I can't tell which one just finished without clicking through every tab.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to see?
+      description: Your idea for solving it. Rough is fine, and sketches or screenshots help.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: How do you work around it today?
+      description: What you currently do instead, or how another tool handles it well.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - Agents & terminals
+        - Unity launch & live stream
+        - Multiplayer clones
+        - Code editor, search & git
+        - Projects, worktrees & windows
+        - Updates & installation
+        - Satura Remote
+        - Performance & resource usage
+        - Something else
+    validations:
+      required: true

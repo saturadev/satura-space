@@ -1,0 +1,192 @@
+import { useState } from 'react'
+import {
+  Report,
+  Carousel,
+  Image,
+  Summary,
+  Section,
+  Grid,
+  Row,
+  Stat,
+  Text,
+  Badge,
+  Checks,
+  Check,
+  Video,
+  Log,
+  Compare,
+  Table,
+  Code,
+  Markdown,
+  FrameLink
+} from '@satura/report'
+import type { LogLine, VideoEvent } from '@satura/report'
+
+const events: VideoEvent[] = [
+  { frame: 30, kind: 'info', label: 'Race starts' },
+  { frame: 60, kind: 'ok', label: 'Ghost spawns on the lap 1 line' },
+  { frame: 150, kind: 'warn', label: 'Ghost clips the barrier' },
+  { frame: 240, kind: 'ok', label: 'Lap 2 time saved' },
+  { frame: 268, kind: 'error', label: 'Ghost trail stops drawing' }
+]
+
+const log: LogLine[] = [
+  { frame: 2, src: 'Race', msg: 'Track loaded: harbor_loop, 3 laps' },
+  { frame: 30, src: 'Race', msg: 'GO' },
+  { frame: 60, src: 'Ghost', msg: 'Replay started from the best lap (41.82 s, 1253 samples)' },
+  { frame: 150, level: 'warn', src: 'Ghost', msg: 'Sample 412 is inside Barrier_07, snapping it to the spline' },
+  { frame: 240, src: 'Race', msg: 'Lap 2: 39.95 s, new best, ghost file written to .sspace/ghosts/harbor_loop.ghost' },
+  {
+    frame: 268,
+    level: 'error',
+    src: 'Ghost',
+    msg: 'NullReferenceException: GhostTrail.material is null',
+    stack: 'GhostTrail.Update () (at Assets/Scripts/Race/GhostTrail.cs:48)\nUnityEngine.Behaviour:Update ()'
+  }
+]
+
+const laps = [
+  { lap: 1, time: '41.82 s', best: 'yes', ghost: 'none' },
+  { lap: 2, time: '39.95 s', best: 'yes', ghost: '-1.87 s' },
+  { lap: 3, time: '40.41 s', best: 'no', ghost: '+0.46 s' }
+]
+
+function LapTable() {
+  return (
+    <Table
+      title="Lap times"
+      columns={[
+        { key: 'lap', label: 'Lap' },
+        { key: 'time', label: 'Time', align: 'right' },
+        { key: 'best', label: 'Best so far' },
+        { key: 'ghost', label: 'Against the ghost', align: 'right' }
+      ]}
+      rows={laps}
+    />
+  )
+}
+
+function Split({ label, value, pct }: { label: string; value: string; pct: number }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ink-2)' }}>
+        <span>{label}</span>
+        <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>{value}</span>
+      </div>
+      <div style={{ height: 6, borderRadius: 3, background: 'var(--elevated)', overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: 'var(--accent)' }} />
+      </div>
+    </div>
+  )
+}
+
+export default function GhostRacerReport() {
+  const [notes, setNotes] = useState(false)
+  return (
+    <Report
+      title="TITLE"
+      status="partial"
+      subtitle="The ghost replays your best lap and saves a new one when you beat it. On lap 3 the ghost's trail stops drawing."
+      meta={
+        <>
+          <span>Branch feat/ghost-racer</span>
+          <span>harbor_loop, 3 laps</span>
+          <span>Unity 6000.6</span>
+        </>
+      }
+    >
+      <Summary tone="warn">
+        4 of 6 checks pass, 1 fails and 1 is skipped. The failure: GhostTrail.material is null after the object pool
+        recycles the trail, so the trail is gone from lap 3 on.
+      </Summary>
+      <Grid min={150}>
+        <Stat label="Best lap" value="39.95 s" hint="lap 2" tone="ok" />
+        <Stat label="Ghost samples" value="1253" hint="60 per second" />
+        <Stat label="Barrier clips" value="1" hint="snapped to the spline" tone="warn" />
+        <Stat label="Errors" value="1" hint="GhostTrail.cs:48" tone="error" />
+      </Grid>
+      <Checks title="Checks">
+        <Check name="PrepareRace(harbor_loop, laps: 3)" status="pass" ms={840} detail="Car on the grid, 3 laps, ghost on" />
+        <Check name="GhostSpawnsOnBestLap" status="pass" ms={120} video="run" frame={60} detail="Spawned at frame 60 from the 41.82 s lap" />
+        <Check
+          name="GhostStaysOnTrack"
+          status="pass"
+          ms={2300}
+          video="run"
+          frame={150}
+          detail="One sample was inside Barrier_07 and got snapped back to the spline"
+          log={['[Ghost] Sample 412 is inside Barrier_07, snapping it to the spline']}
+        />
+        <Check name="LapTimeSaved" status="pass" ms={60} video="run" frame={240} group="save" />
+        <Check
+          name="GhostTrailDrawsAllLaps"
+          status="fail"
+          ms={1900}
+          video="run"
+          frame={268}
+          detail="The trail stops on lap 3. GhostTrail.material is null after the pool recycles the trail."
+          log={['NullReferenceException: GhostTrail.material is null', '  at GhostTrail.Update () (at Assets/Scripts/Race/GhostTrail.cs:48)']}
+        />
+        <Check name="ReplayMatchesInput" status="skip" detail="Needs the input recorder from the next task" />
+      </Checks>
+      <Section title="The run" description="Three laps with the ghost on. Click a marker, an event or a log line to jump to it.">
+        <Video id="run" src="run.mp4" events={events} log={log} />
+      </Section>
+      <Grid min={300}>
+        <LapTable />
+        <div
+          style={{
+            border: '1px solid var(--hairline)',
+            borderRadius: 8,
+            background: 'var(--panel)',
+            padding: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10
+          }}
+        >
+          <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Lap 2 sectors</div>
+          <Split label="Harbor straight" value="12.40 s" pct={84} />
+          <Split label="Crane chicane" value="15.02 s" pct={66} />
+          <Split label="Pier hairpin" value="12.53 s" pct={91} />
+        </div>
+      </Grid>
+      <Section title="Ghost trail" description="Before and after the trail shader change">
+        <Compare before="before.jpg" after="after.jpg" beforeLabel="Old trail" afterLabel="New trail" />
+      </Section>
+      <Section title="Gallery" description="Three shots from the run">
+        <Carousel
+          images={[
+            { src: 'before.jpg', label: 'Lap 1' },
+            { src: 'after.jpg', label: 'Lap 2' },
+            { src: 'stream.jpg', label: 'Lap 3' }
+          ]}
+        />
+        <Image src="stream.jpg" alt="Finish line" caption="The finish line on lap 3" />
+      </Section>
+      <Section title="Unity log">
+        <Log lines={log} video="run" />
+      </Section>
+      <Section title="What I'd try next">
+        <Row>
+          <Badge tone="error">GhostTrail.cs:48</Badge>
+          <Text size="sm">Assign the material again in OnEnable, because the pool clears it.</Text>
+        </Row>
+        <Code lang="csharp" title="GhostTrail.cs">{`void OnEnable()\n{\n    trail.material = trailMaterial;\n}`}</Code>
+        <Row>
+          <FrameLink video="run" frame={268}>Jump to the error</FrameLink>
+          <button
+            type="button"
+            onClick={() => setNotes((n) => !n)}
+            style={{ border: '1px solid var(--hairline)', borderRadius: 6, padding: '2px 8px', background: 'transparent', color: 'var(--ink-2)', fontSize: 12 }}
+          >
+            {notes ? 'Hide notes' : 'Show notes'}
+          </button>
+        </Row>
+        {notes && (
+          <Markdown>{'- The pool resets **every** component on `Release`.\n- `TrailRenderer.material` is not serialized on the prefab variant.'}</Markdown>
+        )}
+      </Section>
+    </Report>
+  )
+}

@@ -1,0 +1,7 @@
+{
+  "name": "shared-surface",
+  "version": "0.0.0",
+  "private": true,
+  "main": "index.js",
+  "gypfile": true
+}

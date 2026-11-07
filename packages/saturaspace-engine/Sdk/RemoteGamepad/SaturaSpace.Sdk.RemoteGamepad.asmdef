@@ -1,0 +1,20 @@
+{
+    "name": "SaturaSpace.Sdk.RemoteGamepad",
+    "rootNamespace": "SaturaSpace.Remote",
+    "references": [
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "SATURA_REMOTE_GAMEPAD"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

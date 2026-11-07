@@ -1,0 +1,7 @@
+Bundled alert sound effects
+============================
+
+Chime effects (chime-*.wav)
+  "Material product sounds" by Google, licensed under CC-BY 4.0.
+  Source: https://github.com/MaxHalford/chime (chime/themes/material)
+  License: https://creativecommons.org/licenses/by/4.0/legalcode

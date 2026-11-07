@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="Satura Remote" />
+    <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
+    <link rel="manifest" href="/m/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/m/apple-touch-icon.png" />
+    <title>Satura Remote</title>
+    <style>
+      html,body{margin:0;height:100%;background:#000;color:#e5e7eb}
+      .boot{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font:600 17px -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+      .boot i{width:28px;height:28px;border-radius:50%;border:2.5px solid rgb(255 255 255/.12);border-top-color:#8196ff;animation:boot .9s linear infinite}
+      @keyframes boot{to{transform:rotate(360deg)}}
+    </style>
+  </head>
+  <body>
+    <div id="root"><div class="boot" data-boot><i></i><span>Loading Satura Remote</span></div></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

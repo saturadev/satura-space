@@ -1,0 +1,4 @@
+# Build-time dependencies (not runtime deps — see requirements.txt for those).
+# Used to freeze the MCP server into a standalone executable via PyInstaller.
+# Install into the dev venv: .venv/bin/pip install -r requirements-build.txt
+pyinstaller==6.21.0

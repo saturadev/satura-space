@@ -1,0 +1,133 @@
+name: phone-site
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phone-site
+  cancel-in-progress: false
+
+env:
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+  WRANGLER_VERSION: 4.152.0
+  ORIGIN: https://remote.saturaspace.com
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      digest: ${{ steps.manifest.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+      - name: Install
+        working-directory: apps/orchestrator
+        run: corepack pnpm@10.34.9 install --frozen-lockfile --ignore-scripts
+      - name: Build twice and compare
+        run: |
+          node packages/companion-app/phone-site/build.mjs
+          mv packages/companion-app/phone-site/dist "$RUNNER_TEMP/first"
+          node packages/companion-app/phone-site/build.mjs
+          diff -r "$RUNNER_TEMP/first" packages/companion-app/phone-site/dist
+      - name: Manifest
+        id: manifest
+        working-directory: packages/companion-app/phone-site/dist
+        run: |
+          test "$(node -p "require('./phone-app.json').commit")" = "$GITHUB_SHA"
+          echo "digest=$(sha256sum phone-app.json | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: phone-site
+          path: packages/companion-app/phone-site/dist
+          if-no-files-found: error
+
+  attest:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: phone-site
+          path: site
+      - name: Same build
+        run: test "$(sha256sum site/phone-app.json | cut -d' ' -f1)" = "${{ needs.build.outputs.digest }}"
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
+        with:
+          subject-path: site/**
+
+  release:
+    needs: [build, attest]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: phone-site
+          path: site
+      - name: Same build
+        run: test "$(sha256sum site/phone-app.json | cut -d' ' -f1)" = "${{ needs.build.outputs.digest }}"
+      - name: Release phone-app.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="phone-${GITHUB_SHA::7}"
+          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release download "$tag" -R "$GITHUB_REPOSITORY" -p phone-app.json -D "$RUNNER_TEMP/released"
+            cmp "$RUNNER_TEMP/released/phone-app.json" site/phone-app.json
+            echo "$tag already holds this phone-app.json"
+            exit 0
+          fi
+          gh release create "$tag" site/phone-app.json -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$tag" --prerelease --latest=false \
+            --notes "Satura Remote phone app built from $GITHUB_SHA. Check the live site: node packages/companion-app/scripts/verify-phone-app.mjs $ORIGIN --repo $GITHUB_REPOSITORY. Check this file's provenance: gh attestation verify phone-app.json --repo $GITHUB_REPOSITORY"
+
+  deploy:
+    needs: [build, release]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: phone-deploy
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          sparse-checkout: packages/companion-app/scripts
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: phone-site
+          path: ${{ runner.temp }}/site
+      - name: Same build
+        run: test "$(sha256sum "$RUNNER_TEMP/site/phone-app.json" | cut -d' ' -f1)" = "${{ needs.build.outputs.digest }}"
+      - name: Deploy to Cloudflare Pages
+        working-directory: ${{ runner.temp }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: 'false'
+        run: npx --yes "wrangler@$WRANGLER_VERSION" pages deploy site --project-name satura-remote --branch main --commit-hash "$GITHUB_SHA" --commit-message "phone-${GITHUB_SHA::7}" --commit-dirty=false
+      - name: Verify the live site
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if node packages/companion-app/scripts/verify-phone-app.mjs "$ORIGIN" --dist "$RUNNER_TEMP/site" --repo "$GITHUB_REPOSITORY"; then exit 0; fi
+            sleep 20
+          done
+          exit 1

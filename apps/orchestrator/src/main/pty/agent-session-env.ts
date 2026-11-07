@@ -1,0 +1,17 @@
+const INHERITED_AGENT_SESSION_KEYS = [
+  'CLAUDECODE',
+  'CLAUDE_CODE_SESSION_ID',
+  'CLAUDE_CODE_CHILD_SESSION',
+  'CLAUDE_CODE_SESSION_ATTENDED',
+  'CLAUDE_CODE_ENTRYPOINT',
+  'CLAUDE_CODE_EXECPATH',
+  'CLAUDE_CODE_MESSAGING_SOCKET',
+  'CLAUDE_CODE_MESSAGING_TOKEN',
+  'CLAUDE_PID',
+  'CLAUDE_EFFORT',
+  'AI_AGENT'
+] as const
+
+export function removeInheritedAgentSession(env: Record<string, string>): void {
+  for (const key of INHERITED_AGENT_SESSION_KEYS) delete env[key]
+}

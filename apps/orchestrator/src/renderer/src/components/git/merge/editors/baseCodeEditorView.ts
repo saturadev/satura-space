@@ -1,0 +1,146 @@
+import type { editor } from 'monaco-editor'
+import { h, reset } from 'monaco-editor/esm/vs/base/browser/dom.js'
+import { renderLabelWithIcons } from 'monaco-editor/esm/vs/base/browser/ui/iconLabel/iconLabels.js'
+import { BugIndicatingError } from 'monaco-editor/esm/vs/base/common/errors.js'
+import { monaco } from '../../../../lib/editor/monaco-setup'
+import { autorun, autorunWithStore, derived, type IObservable } from '../../../../lib/git/merge/core/observable'
+import { applyObservableDecorations, type IModelDeltaDecoration } from '../utils'
+import { handledConflictMinimapOverViewRulerColor, unhandledConflictMinimapOverViewRulerColor } from '../colors'
+import { EditorGutter } from '../editorGutter'
+import type { MergeEditorViewModel } from '../viewModel'
+import { CodeEditorView, createSelectionsAutorun } from './codeEditorView'
+
+export class BaseCodeEditorView extends CodeEditorView {
+  constructor(
+    viewModel: IObservable<MergeEditorViewModel | undefined>,
+  ) {
+    super(viewModel)
+
+    this._register(
+      createSelectionsAutorun(this, (baseRange, _viewModel) => baseRange)
+    )
+
+    this._register(
+      autorunWithStore((reader, store) => {
+        if (this.checkboxesVisible.read(reader)) {
+          store.add(new EditorGutter(this.editor, this.htmlElements.gutterDiv, {
+            getIntersectingGutterItems: (_range, _reader) => [],
+            createView: (_item, _target) => { throw new BugIndicatingError() },
+          }))
+        }
+      })
+    )
+
+    this._register(
+      autorun((reader) => {
+        const vm = this.viewModel.read(reader)
+        if (!vm) {
+          return
+        }
+        this.editor.setModel(vm.model.base)
+        reset(this.htmlElements.title, ...renderLabelWithIcons('Base'))
+
+        const baseShowDiffAgainst = vm.baseShowDiffAgainst.read(reader)
+
+        let node: Node | undefined = undefined
+        if (baseShowDiffAgainst) {
+          const label = `Comparing with ${baseShowDiffAgainst === 1 ? vm.model.input1.title : vm.model.input2.title}`
+          const tooltip = 'Differences are highlighted with a background color.'
+          node = h('span', { title: tooltip }, [label]).root
+        }
+        reset(this.htmlElements.description, ...(node ? [node] : []))
+      })
+    )
+
+    this._register(applyObservableDecorations(this.editor, this.decorations))
+  }
+
+  private readonly decorations = derived(this, (reader) => {
+    const viewModel = this.viewModel.read(reader)
+    if (!viewModel) {
+      return []
+    }
+    const model = viewModel.model
+    const textModel = model.base
+
+    const activeModifiedBaseRange = viewModel.activeModifiedBaseRange.read(reader)
+    const showNonConflictingChanges = viewModel.showNonConflictingChanges.read(reader)
+    const showDeletionMarkers = this.showDeletionMarkers.read(reader)
+
+    const result: IModelDeltaDecoration[] = []
+    for (const modifiedBaseRange of model.modifiedBaseRanges.read(reader)) {
+
+      const range = modifiedBaseRange.baseRange
+      if (!range) {
+        continue
+      }
+
+      const isHandled = model.isHandled(modifiedBaseRange).read(reader)
+      if (!modifiedBaseRange.isConflicting && isHandled && !showNonConflictingChanges) {
+        continue
+      }
+
+      const blockClassNames = ['merge-editor-block']
+      let blockPadding: [top: number, right: number, bottom: number, left: number] = [0, 0, 0, 0]
+      if (isHandled) {
+        blockClassNames.push('handled')
+      }
+      if (modifiedBaseRange === activeModifiedBaseRange) {
+        blockClassNames.push('focused')
+        blockPadding = [0, 2, 0, 2]
+      }
+      blockClassNames.push('base')
+
+      const inputToDiffAgainst = viewModel.baseShowDiffAgainst.read(reader)
+
+      if (inputToDiffAgainst) {
+        for (const diff of modifiedBaseRange.getInputDiffs(inputToDiffAgainst)) {
+          const range = diff.inputRange.toInclusiveRange()
+          if (range) {
+            result.push({
+              range,
+              options: {
+                className: `merge-editor-diff base`,
+                description: 'Merge Editor',
+                isWholeLine: true,
+              }
+            })
+          }
+
+          for (const diff2 of diff.rangeMappings) {
+            if (showDeletionMarkers || !diff2.inputRange.isEmpty()) {
+              result.push({
+                range: diff2.inputRange,
+                options: {
+                  className: diff2.inputRange.isEmpty() ? `merge-editor-diff-empty-word base` : `merge-editor-diff-word base`,
+                  description: 'Merge Editor',
+                  showIfCollapsed: true,
+                },
+              })
+            }
+          }
+        }
+      }
+
+      result.push({
+        range: range.toInclusiveRangeOrEmpty(),
+        options: {
+          showIfCollapsed: true,
+          blockClassName: blockClassNames.join(' '),
+          blockPadding,
+          blockIsAfterEnd: range.startLineNumber > textModel.getLineCount(),
+          description: 'Merge Editor',
+          minimap: {
+            position: monaco.editor.MinimapPosition.Gutter,
+            color: { id: isHandled ? handledConflictMinimapOverViewRulerColor : unhandledConflictMinimapOverViewRulerColor },
+          },
+          overviewRuler: modifiedBaseRange.isConflicting ? {
+            position: monaco.editor.OverviewRulerLane.Center,
+            color: { id: isHandled ? handledConflictMinimapOverViewRulerColor : unhandledConflictMinimapOverViewRulerColor },
+          } : undefined
+        }
+      })
+    }
+    return result
+  })
+}

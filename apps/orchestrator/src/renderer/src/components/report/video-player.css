@@ -1,0 +1,229 @@
+@import '../../remote/progress-bar.css';
+
+.sr-scope .sr-content > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  display: block;
+  pointer-events: none;
+}
+.sr-scope .sr-viewport.pixelated .sr-content > canvas { image-rendering: pixelated; }
+
+.sr-scope .srv-bar {
+  position: relative;
+  display: block;
+  width: 120px;
+  height: 3px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+}
+.sr-scope .srv-bar > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: var(--accent);
+  animation: srv-bar 1.1s ease-in-out infinite;
+}
+@keyframes srv-bar {
+  0% { left: -40%; }
+  100% { left: 100%; }
+}
+.srv-probe[data-probe] { gap: 10px; }
+.srv-probe[data-probe='error'] { color: var(--error); }
+.srv-probe[data-probe='error'] .srv-bar { display: none; }
+
+.sr-scope .sr-viewport[data-empty] { background: #000 var(--srv-poster, none) center / contain no-repeat; }
+.sr-scope .srv-empty {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  color: #c3c7ce;
+  font-size: 12.5px;
+  text-align: center;
+  pointer-events: none;
+}
+.sr-scope .sr-viewport[data-empty] > .srv-empty { display: flex; }
+.sr-scope .sr-viewport[data-empty][style*='--srv-poster'] > .srv-empty { display: none; }
+.sr-scope .srv-empty[data-state='error'] { color: #fca5a5; }
+.sr-scope .srv-empty[data-state='idle'] .srv-bar,
+.sr-scope .srv-empty[data-state='error'] .srv-bar,
+.sr-scope .srv-empty[data-state='wait'] .srv-bar { display: none; }
+
+.sr-scope .srv-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0 6px;
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.sr-scope .srv-status[hidden] { display: none; }
+.sr-scope .srv-status > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sr-scope .srv-status[data-state='wait'] { color: var(--ink-2); }
+.sr-scope .srv-status[data-state='error'] { color: var(--error); white-space: normal; }
+.sr-scope .srv-status .sr-btn { flex: none; border-color: var(--strong); }
+.sr-scope .srv-status .sr-btn[hidden] { display: none; }
+
+.sr-scope .srv-evnow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0 6px;
+  overflow: hidden;
+  color: var(--ink-2);
+  font: 11px/16px var(--mono);
+  white-space: nowrap;
+}
+.sr-scope .srv-evnow[hidden] { display: none; }
+.sr-scope .srv-evnow > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+.sr-scope .srv-overview .got { position: absolute; left: 0; top: 12px; width: 0; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 22%, transparent); }
+.sr-player[data-decode='element'] .srv-overview .got { display: none; }
+
+.sr-scope .srv-hud-label { pointer-events: auto; }
+.sr-scope button.srv-label { pointer-events: auto; cursor: pointer; }
+
+.sr-scope .sr-btn.sr-press { animation: srv-press 160ms ease-out; }
+@keyframes srv-press {
+  0% { transform: scale(0.86); }
+  100% { transform: scale(1); }
+}
+.sr-scope .sr-btn[data-pending] { animation: srv-pending 0.9s ease-in-out infinite; color: var(--accent); }
+@keyframes srv-pending {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@container (max-width: 520px) {
+  .sr-scope .srv-transport [data-a='evB'],
+  .sr-scope .srv-transport [data-a='evF'],
+  .sr-scope .srv-transport [data-a='loop'],
+  .sr-scope .srv-transport .sr-sep,
+  .sr-scope .srv-evnow { display: none; }
+  .sr-scope .srv-transport { flex-wrap: wrap; row-gap: 2px; }
+  .sr-scope .srv-status { order: 10; flex: 1 0 100%; margin: 0 4px 2px; }
+}
+
+@media (pointer: coarse) {
+  .sr-scope .srv-transport [data-a='help'] { display: none; }
+  .sr-scope .srv-transport { gap: 2px; padding: 4px 6px; }
+  .sr-scope .srv-transport > .sr-btn { height: 40px; min-width: 38px; padding: 0 4px; }
+  .sr-scope .srv-overview::after { display: none; }
+  .sr-scope .srv-transport > .sr-btn svg { width: 18px; height: 18px; }
+  .sr-scope .srv-transport > .sr-btn.primary svg { width: 20px; height: 20px; }
+  .sr-scope .srv-overview { height: 40px; margin: 0 14px; }
+  .sr-scope .srv-overview .track,
+  .sr-scope .srv-overview .got,
+  .sr-scope .srv-overview .fill { top: 16px; height: 8px; border-radius: 4px; }
+  .sr-scope .srv-overview .mk { top: 13px; height: 14px; }
+  .sr-scope .srv-overview .head { top: 7px; width: 4px; height: 26px; margin-left: -2px; border-radius: 2px; }
+  .sr-scope .srv-frame input { width: 52px; height: 30px; font-size: 14px; }
+}
+
+.sv { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sv-box { position: relative; width: 100%; background: #000; border-radius: var(--radius-control, 6px); overflow: hidden; }
+.sv-mc {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  --media-primary-color: #fff;
+  --media-secondary-color: transparent;
+  --media-text-color: #fff;
+  --media-icon-color: #fff;
+  --media-control-background: transparent;
+  --media-control-hover-background: rgb(255 255 255 / 0.08);
+  --media-font-family: var(--sans);
+  --media-font-size: 12.5px;
+  --media-button-icon-width: 20px;
+  --media-button-icon-height: 20px;
+  --media-control-padding: 8px;
+  --media-control-height: 20px;
+  --media-range-track-height: 4px;
+  --media-range-track-border-radius: 2px;
+  --media-range-track-background: rgb(255 255 255 / 0.18);
+  --media-time-range-buffered-color: rgb(255 255 255 / 0.45);
+  --media-range-bar-color: var(--accent);
+  --media-range-thumb-background: var(--accent);
+  --media-range-thumb-width: 12px;
+  --media-range-thumb-height: 12px;
+  --media-preview-time-background: rgb(15 16 19 / 0.9);
+  --media-preview-time-border-radius: 6px;
+  --media-preview-time-padding: 3px 7px;
+  --media-preview-time-margin: 0 0 10px;
+  --media-preview-time-text-shadow: none;
+}
+.sv-mc video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.sv-bottom {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  width: 100%;
+  padding-top: 12px;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.3) 60%, rgb(0 0 0 / 0));
+}
+.sv-range { width: 100%; height: 22px; }
+.sv-bar { width: 100%; height: 38px; align-items: center; padding: 0 6px; box-sizing: border-box; }
+.sv-bar > * { flex: none; }
+.sv-bar media-time-display { padding: 0 8px; font-variant-numeric: tabular-nums; }
+.sv-bar media-volume-range { width: 84px; --media-range-padding-left: 6px; --media-range-padding-right: 6px; }
+.sv-spacer { flex: 1 1 auto; }
+.sv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control, 6px);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+.sv-btn:hover { background: rgb(255 255 255 / 0.08); }
+.sv-btn svg { width: 20px; height: 20px; }
+.sv-btn .sr-i-collapse { display: none; }
+.sv[data-full] .sv-btn .sr-i-expand { display: none; }
+.sv[data-full] .sv-btn .sr-i-collapse { display: block; }
+.sv-big {
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.5);
+  --media-button-icon-width: 28px;
+  --media-button-icon-height: 28px;
+}
+.sv-mc[mediapaused] .sv-big { display: inline-flex; }
+.sv-mc:not([mediapaused]) .sv-big { display: none; }
+.sv-status { display: flex; align-items: center; gap: 10px; min-height: 22px; color: var(--ink-3); font-size: 12px; }
+.sv-status[data-state='error'] { color: var(--error); }
+.sv-status button {
+  flex: none;
+  padding: 3px 12px;
+  border-radius: var(--radius-control, 6px);
+  border: 1px solid var(--strong);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+.sv-full { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px; }
+.sv-full .sv-box { flex: 1; min-height: 0; }
+.sv-card { display: flex; flex-direction: column; gap: 8px; min-width: 0; }

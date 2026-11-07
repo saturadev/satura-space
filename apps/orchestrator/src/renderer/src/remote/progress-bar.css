@@ -1,0 +1,41 @@
+.ws-bar {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.08);
+}
+
+.ws-bar > i {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--ws-accent, #8196ff);
+  transform-origin: left center;
+  transform: scaleX(var(--p, 0));
+  transition: transform var(--m-slow, 420ms) var(--m-out, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+[data-leaving] .ws-bar > i {
+  transform: scaleX(1);
+}
+
+.ws-bar[data-indeterminate] > i {
+  width: 38%;
+  transform: none;
+  animation: m-sweep 1.3s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes m-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(270%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-bar > i {
+    transition: none;
+  }
+}

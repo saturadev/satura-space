@@ -1,0 +1,60 @@
+.remote-panels {
+  padding-bottom: max(12px, calc(env(safe-area-inset-bottom) - var(--remote-bottom, 0px) + 12px));
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.remote-panels-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
+  padding-bottom: 4px;
+}
+
+.remote-panels-row {
+  -webkit-touch-callout: none;
+}
+
+.remote-panels-row:active,
+.remote-panels-row[data-pressed] {
+  background: rgb(255 255 255 / 0.06);
+}
+
+.remote-panels-thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  pointer-events: none;
+}
+
+.remote-panels-shot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@keyframes remote-panels-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.remote-panels-row[data-dragging] {
+  border-radius: 14px;
+  background: var(--elevated, #26282d);
+  box-shadow: 0 14px 34px rgb(0 0 0 / 0.5);
+}
+
+.remote-panels section[data-drop-target] > h2 {
+  color: var(--accent);
+}
+
+.remote-panels section > h2 {
+  transition: color var(--m-quick, 160ms) ease;
+}

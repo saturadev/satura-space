@@ -1,0 +1,137 @@
+@import '../../renderer/src/index.css';
+@import '../../renderer/src/components/report/report-kit.css';
+@source '../../renderer/src';
+@source '.';
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--canvas);
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-layout='mobile'] [data-viewer-report] {
+  zoom: var(--landing-report-scale, 1);
+}
+
+.rk-host {
+  overscroll-behavior: auto;
+}
+
+[data-layout='mobile'] .sr-hint {
+  display: none;
+}
+
+#root,
+#root * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+#root input,
+#root textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+[data-layout='mobile'] .sr-btn[data-a='expand'] {
+  display: none;
+}
+
+[data-layout='mobile'] {
+  --rk-lift: 1;
+}
+
+[data-embed='flow'],
+[data-embed='flow'] body,
+[data-embed='flow'] #root {
+  height: auto;
+  overflow: visible;
+}
+
+[data-embed='flow'] #root > .absolute,
+[data-embed='flow'] [data-viewer-report] {
+  position: relative;
+  inset: auto;
+}
+
+[data-embed='flow'] .rk-host {
+  position: relative;
+  inset: auto;
+  overflow: visible;
+  contain: none;
+  container-type: inline-size;
+}
+
+[data-layout='mobile'] .sr-scope .srv-transport {
+  gap: 0;
+  padding: 4px 6px;
+}
+
+[data-layout='mobile'] .sr-scope .srv-transport .sr-btn {
+  height: 40px;
+  min-width: 38px;
+  padding: 0;
+}
+
+[data-layout='mobile'] .sr-scope .srv-transport .sr-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+[data-layout='mobile'] .sr-scope .srv-transport [data-a='help'] {
+  display: none;
+}
+
+[data-layout='mobile'] .sr-scope .srv-frame {
+  margin: 0 4px;
+  font-size: 0;
+  gap: 0;
+}
+
+[data-layout='mobile'] .sr-scope .srv-frame input {
+  width: 52px;
+  height: 32px;
+  font-size: 14px;
+}
+
+[data-layout='mobile'] .sr-scope .srv-frame [data-r='frameN'] {
+  display: none;
+}
+
+[data-layout='mobile'] .sr-scope .srv-overview {
+  height: 44px;
+}
+
+[data-layout='mobile'] .sr-scope .srv-overview .track,
+[data-layout='mobile'] .sr-scope .srv-overview .fill {
+  top: 19px;
+}
+
+[data-layout='mobile'] .sr-scope .srv-overview .mk {
+  top: 15px;
+  height: 14px;
+}
+
+[data-layout='mobile'] .sr-scope .srv-overview .head {
+  top: 10px;
+  width: 3px;
+  height: 24px;
+}
+
+[data-layout='mobile'] .sr-scope .srv-overview .tip {
+  bottom: 40px;
+}
+
+[data-layout='mobile'] .rk-check-log {
+  white-space: pre-wrap;
+}
+
+[data-embed='flow']:has(body > [data-report-overlay]),
+[data-embed='flow']:has(body > [data-report-overlay]) body {
+  overflow: hidden;
+}

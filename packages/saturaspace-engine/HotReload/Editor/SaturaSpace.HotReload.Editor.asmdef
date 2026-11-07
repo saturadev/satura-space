@@ -1,0 +1,26 @@
+{
+    "name": "SaturaSpace.HotReload.Editor",
+    "rootNamespace": "HotReloadPrototype",
+    "references": [
+        "SaturaSpace.Sdk",
+        "SaturaSpace.HotReload.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "SaturaSpace.Vendor.Microsoft.CodeAnalysis.dll",
+        "SaturaSpace.Vendor.Microsoft.CodeAnalysis.CSharp.dll",
+        "SaturaSpace.Vendor.System.Collections.Immutable.dll",
+        "SaturaSpace.Vendor.System.Reflection.Metadata.dll",
+        "SaturaSpace.Vendor.System.Runtime.CompilerServices.Unsafe.dll",
+        "SaturaSpace.Vendor.Harmony.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

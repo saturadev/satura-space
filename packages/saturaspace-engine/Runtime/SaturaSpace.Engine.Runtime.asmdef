@@ -1,0 +1,20 @@
+{
+    "name": "SaturaSpace.Engine.Runtime",
+    "rootNamespace": "",
+    "references": [
+        "SaturaSpace.Sdk",
+        "Unity.TextMeshPro",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_EDITOR"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
