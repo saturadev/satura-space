@@ -103,7 +103,8 @@ function attestedDigests(attestation, digest, repo) {
 
 async function attestedFiles(repo, digest) {
   const url = `https://api.github.com/repos/${repo}/attestations/sha256:${digest}?predicate_type=provenance`
-  const res = await fetch(url, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'satura-verify-phone-app', 'x-github-api-version': '2022-11-28' }, signal: AbortSignal.timeout(TIMEOUT_MS) })
+  const token = process.env.GITHUB_TOKEN?.trim()
+  const res = await fetch(url, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'satura-verify-phone-app', 'x-github-api-version': '2022-11-28', ...(token ? { authorization: `Bearer ${token}` } : {}) }, signal: AbortSignal.timeout(TIMEOUT_MS) })
   const body = await res.text()
   if (res.status === 404) return { files: null, count: 0 }
   if (res.status !== 200) throw new Error(`${url} answered ${res.status}${res.headers.get('x-ratelimit-remaining') === '0' ? ' (rate limit used up)' : ''}`)

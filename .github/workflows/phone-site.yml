@@ -76,6 +76,7 @@ jobs:
     environment: phone-deploy
     permissions:
       contents: read
+      attestations: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -98,6 +99,8 @@ jobs:
           WRANGLER_SEND_METRICS: 'false'
         run: npx --yes "wrangler@$WRANGLER_VERSION" pages deploy site --project-name satura-remote --branch main --commit-hash "$GITHUB_SHA" --commit-message "phone-${GITHUB_SHA::7}" --commit-dirty=false
       - name: Verify the live site
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           for attempt in 1 2 3 4 5; do
             if node packages/companion-app/scripts/verify-phone-app.mjs "$ORIGIN" --dist "$RUNNER_TEMP/site" --repo "$GITHUB_REPOSITORY"; then exit 0; fi
