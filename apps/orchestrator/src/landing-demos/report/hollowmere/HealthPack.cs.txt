@@ -1,0 +1,65 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Rollmates
+{
+    public class HealthPack : MonoBehaviour
+    {
+        [Tooltip("Health this pack gives back, on the 0..1 bar.")]
+        [Range(0f, 1f)] public float worth = 0.5f;
+        [Tooltip("Degrees per second the pack spins.")]
+        public float spin = 60f;
+        [Tooltip("How far up and down it bobs, in metres.")]
+        public float bob = 0.15f;
+
+        public bool Taken { get; private set; }
+
+        public static IReadOnlyList<HealthPack> All => all;
+
+        static readonly List<HealthPack> all = new List<HealthPack>();
+
+        Vector3 home;
+        float phase;
+        bool settled;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void Forget() => all.Clear();
+
+        void OnEnable()
+        {
+            if (!all.Contains(this)) all.Add(this);
+        }
+
+        void OnDisable() => all.Remove(this);
+
+        void Start()
+        {
+            BloodBody.Enlist(gameObject);
+            home = transform.position;
+            phase = Random.value * Mathf.PI * 2f;
+            settled = true;
+        }
+
+        void Update()
+        {
+            if (Taken || !settled) return;
+            transform.Rotate(Vector3.up, spin * Time.deltaTime, Space.World);
+            transform.position = home + Vector3.up * (Mathf.Sin(Time.time * 2f + phase) * bob);
+        }
+
+        public bool Within(Vector3 at, float reach)
+        {
+            if (Taken) return false;
+            Vector3 d = at - transform.position;
+            d.y = 0f;
+            return d.sqrMagnitude <= reach * reach;
+        }
+
+        public void Take()
+        {
+            if (Taken) return;
+            Taken = true;
+            gameObject.SetActive(false);
+        }
+    }
+}

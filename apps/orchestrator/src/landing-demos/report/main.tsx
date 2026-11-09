@@ -8,14 +8,14 @@ import { applyTheme } from '@renderer/lib/theme/themes'
 import { ReportApi, ReportContext, ReportStore, type ReportBridge, type ReportGit } from '@renderer/components/report/report-context'
 import { ReportOverlay, type ImageGallery, type Overlay } from '@renderer/components/report/ReportOverlay'
 import { installPopoverDismiss } from '@renderer/remote/popover-dismiss'
-import JumpPadReport from './jump-pad/report'
-import jumpPadSource from './jump-pad/JumpPad.cs.txt?raw'
+import HealthPackReport from './hollowmere/report'
+import healthPackSource from './hollowmere/HealthPack.cs.txt?raw'
 import './report.css'
 
-const ROOT = '/arena-demo'
-const FILE = `${ROOT}/.sspace/reports/jump-pad/report.tsx`
-const MEDIA: Record<string, string> = { [`${ROOT}/.sspace/reports/jump-pad/run.mp4`]: '/media/jump-pad-run.mp4?v=2' }
-const CODE: Record<string, string> = { 'Assets/PadDemo/JumpPad.cs': jumpPadSource }
+const ROOT = '/hollowmere'
+const FILE = `${ROOT}/.sspace/reports/health-pack-reach/report.tsx`
+const MEDIA: Record<string, string> = { [`${ROOT}/.sspace/videos/health-pack-reach.mp4`]: '/media/health-pack-run.mp4?v=1' }
+const CODE: Record<string, string> = { 'Assets/Rollmates/Scripts/HealthPack.cs': healthPackSource }
 
 const phone = window.innerWidth < 640
 const flow = phone && window.parent !== window
@@ -110,7 +110,7 @@ function Page(): ReactElement {
         <div className="sr-scope rk-host">
           <div className="rk-report">
             <ReportContext.Provider value={api}>
-              <JumpPadReport />
+              <HealthPackReport />
             </ReportContext.Provider>
           </div>
         </div>
