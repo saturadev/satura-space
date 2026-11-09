@@ -2,8 +2,20 @@ name: ci
 
 on:
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - '.github/media/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'LICENSE'
+      - 'NOTICE'
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.github/media/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'LICENSE'
+      - 'NOTICE'
 
 permissions:
   contents: read
