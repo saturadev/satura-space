@@ -17,6 +17,7 @@ import './game-input'
 import './editor'
 import './terminal'
 import './daemon'
+import './mouse'
 
 import './scratch'
 import './fn'
