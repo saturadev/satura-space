@@ -99,7 +99,8 @@ server downloads Unity's C# reference source from GitHub and reads Unity's Scrip
 an agent asks for them, dashboard tiles fetch the URLs they're written to fetch, and the Kimi usage
 meter asks Kimi's API with your own Kimi login. Satura Remote stays off until you turn it on to
 pair a phone; from then on the app connects to the hosted relay (`relay.saturaspace.com`) and,
-every few hours, checks the hosted phone app (`remote.saturaspace.com`) against its release on GitHub.
+every few hours, checks the hosted phone app (`remote.saturaspace.com`) against its build attestation
+on GitHub (`api.github.com`).
 
 ## Satura Remote
 

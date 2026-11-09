@@ -77,15 +77,21 @@ live site, and that it equals your own build of the same commit:
 node scripts/verify-phone-app.mjs https://remote.saturaspace.com --dist phone-site/dist --repo saturadev/satura-space
 ```
 
-It downloads every listed file and compares its hash, checks that `/m/`, `/h/all/`, `/h/<id>/`, the
-service worker and the report frame route to the right files with the headers in the local
-`_headers`, and that the live `phone-app.json` equals the `phone-<short sha>` release asset.
-`gh attestation verify phone-app.json --repo saturadev/satura-space` checks that CI built it.
+It downloads every listed file and compares its hash, and checks that `/m/`, `/h/all/`, `/h/<id>/`,
+the service worker and the report frame route to the right files with the headers in the local
+`_headers`. `--repo` asks the GitHub API
+(`/repos/<owner>/<name>/attestations/sha256:<hash of the live phone-app.json>`) for its build
+attestations and needs one that is SLSA provenance v1 from `.github/workflows/phone-site.yml` on
+`refs/heads/main` of that repo (workflow repository, path and ref, and builder id) with that hash
+among its subjects; every live file's hash must then be among its subjects too. That trusts GitHub's API
+over TLS. `gh attestation verify phone-app.json --repo saturadev/satura-space` on a downloaded
+`phone-app.json` also checks the attestation's Sigstore signature.
 
 The [`phone-site`](../../.github/workflows/phone-site.yml) workflow runs by hand on `main`: it builds
-twice and compares, attests the files, attaches `phone-app.json` to the release `phone-<short sha>`,
-deploys to the Cloudflare Pages project `satura-remote` with the `phone-deploy` environment's
-`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, and checks the live site.
+twice and compares, attests every file with `actions/attest-build-provenance`, deploys to the
+Cloudflare Pages project `satura-remote` with the `phone-deploy` environment's
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, and checks the live site against that
+attestation. It makes no GitHub release.
 
 The phone signs in with an account ticket. `/remote/connect?next=<path>` on the account site sends it
 back to `/m/#ticket=<ticket>&next=<path>`; the page keeps the ticket in IndexedDB, drops the fragment

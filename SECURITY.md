@@ -227,19 +227,31 @@ the pairing code or the session keys.
   origin itself. A service worker that pins the app shell would only move the problem: the browser
   refetches the worker from the same origin, so whoever controls the origin controls the update.
 - **Checking the live phone app.** Every deploy publishes `phone-app.json` (the commit and the
-  SHA-256 of every file) on the site, and CI attaches the same file to the GitHub release
-  `phone-<short sha>` of this repository. `node packages/companion-app/scripts/verify-phone-app.mjs`
-  checks the live site against it from any computer. The desktop runs a tripwire too: while Remote is
-  on with the hosted relay it fetches the live manifest at most every 4 hours, compares it with the
-  release of its commit, and hashes the html files, the pages phones open (`/m/`, `/h/all/`, its own
-  `/h/<host id>/`) and the scripts and styles they load. A difference, a live commit without a
-  release after 30 minutes, or a missing manifest is logged as `PHONE APP MISMATCH` and shown in
-  Settings > Mobile; an unreachable site or GitHub only makes the result unknown. It is a tripwire,
-  not a guarantee: it sees what one desktop gets from its network, so a site that serves other files
-  to one phone, or changes only chunks loaded later, can pass it, and the release itself is only as
-  good as the commit and the CI run that made it (rebuild that commit to check). It also means
-  nothing on that hostname may rewrite pages (Cloudflare Email Obfuscation, Rocket Loader, injected
-  analytics), or every check fails.
+  SHA-256 of every file) on the site, and before deploying, CI attests every file of the build,
+  `phone-app.json` among them, with GitHub's build provenance (SLSA provenance v1, signed through
+  Sigstore). `GET https://api.github.com/repos/saturadev/satura-space/attestations/sha256:<hex>`
+  returns those attestations to anyone. An attestation counts when its statement is SLSA provenance
+  v1, lists the live `phone-app.json`'s SHA-256 among its subjects, names the workflow
+  `.github/workflows/phone-site.yml` of `https://github.com/saturadev/satura-space` at
+  `refs/heads/main`, and has the builder id
+  `https://github.com/saturadev/satura-space/.github/workflows/phone-site.yml@refs/heads/main`.
+  `node packages/companion-app/scripts/verify-phone-app.mjs --repo saturadev/satura-space` checks
+  the live site that way from any computer: the attestation, then every listed file against the
+  manifest and the attestation's subjects. The desktop runs a tripwire too: while Remote is on with
+  the hosted relay it fetches the live manifest at most every 4 hours, looks up the attestation of
+  its SHA-256, and hashes the html files, the pages phones open (`/m/`, `/h/all/`, its own
+  `/h/<host id>/`) and the scripts and styles they load against the manifest and the attestation. A
+  difference, a missing manifest, or a manifest that no such attestation covers 30 minutes after the
+  desktop first saw it is logged as `PHONE APP MISMATCH` and shown in Settings > Mobile; an
+  unreachable site or GitHub, or a GitHub rate limit, only makes the result unknown. Both checks read
+  the attestation from GitHub's API over TLS and trust GitHub for it, as they trusted a GitHub
+  download before; they don't check the Sigstore signature. To check that too, download the live
+  `phone-app.json` and run `gh attestation verify phone-app.json --repo saturadev/satura-space`. It
+  is a tripwire, not a guarantee: it sees what one desktop gets from its network, so a site that
+  serves other files to one phone, or changes only chunks loaded later, can pass it, and an
+  attestation is only as good as the commit and the CI run that made it (rebuild that commit to
+  check). It also means nothing on that hostname may rewrite pages (Cloudflare Email Obfuscation,
+  Rocket Loader, injected analytics), or every check fails.
 - **A self-hosted relay serves its own phone site.** A relay with a site folder serves the phone app
   from its own origin and a `/phone-config.json` that points the phone back at itself; whoever runs
   that relay controls that code, as before.

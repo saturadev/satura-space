@@ -69,35 +69,8 @@ jobs:
         with:
           subject-path: site/**
 
-  release:
-    needs: [build, attest]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with:
-          name: phone-site
-          path: site
-      - name: Same build
-        run: test "$(sha256sum site/phone-app.json | cut -d' ' -f1)" = "${{ needs.build.outputs.digest }}"
-      - name: Release phone-app.json
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          tag="phone-${GITHUB_SHA::7}"
-          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release download "$tag" -R "$GITHUB_REPOSITORY" -p phone-app.json -D "$RUNNER_TEMP/released"
-            cmp "$RUNNER_TEMP/released/phone-app.json" site/phone-app.json
-            echo "$tag already holds this phone-app.json"
-            exit 0
-          fi
-          gh release create "$tag" site/phone-app.json -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$tag" --prerelease --latest=false \
-            --notes "Satura Remote phone app built from $GITHUB_SHA. Check the live site: node packages/companion-app/scripts/verify-phone-app.mjs $ORIGIN --repo $GITHUB_REPOSITORY. Check this file's provenance: gh attestation verify phone-app.json --repo $GITHUB_REPOSITORY"
-
   deploy:
-    needs: [build, release]
+    needs: [build, attest]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: phone-deploy
