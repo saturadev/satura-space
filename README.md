@@ -1,5 +1,13 @@
 # Satura Space
 
+[![CI](https://github.com/saturadev/satura-space/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/saturadev/satura-space/actions/workflows/ci.yml)
+[![Build](https://github.com/saturadev/satura-space/actions/workflows/build.yml/badge.svg)](https://github.com/saturadev/satura-space/actions/workflows/build.yml)
+[![Phone app](https://github.com/saturadev/satura-space/actions/workflows/phone-site.yml/badge.svg?branch=main)](https://github.com/saturadev/satura-space/actions/workflows/phone-site.yml)
+[![Release](https://img.shields.io/github/v/release/saturadev/satura-space?label=release)](https://github.com/saturadev/satura-space/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/saturadev/satura-space/total)](https://github.com/saturadev/satura-space/releases)
+[![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows-5e6ad2)](https://github.com/saturadev/satura-space/releases/latest)
+[![License](https://img.shields.io/github/license/saturadev/satura-space)](LICENSE)
+
 **Your agent sets the stage. You tune the feel.**
 
 Coding agents build your Unity game while it streams live beside them. When a value needs your eye,
