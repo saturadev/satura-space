@@ -8,7 +8,9 @@ Checks that a live Satura Remote origin serves exactly the files its /phone-app.
   origin        the phone app origin, default https://remote.saturaspace.com
   --dist <dir>  also check that a local build (packages/companion-app/phone-site/dist) equals the live one,
                 including the security headers its _headers file sets
-  --repo <o/n>  also check that /phone-app.json equals the phone-<commit> release asset of that GitHub repo`
+  --repo <o/n>  also check that GitHub holds a build attestation (SLSA provenance v1) of the live /phone-app.json
+                from .github/workflows/phone-site.yml on refs/heads/main of that repo, and that every live file's
+                hash is among its subjects; gh attestation verify phone-app.json --repo <o/n> checks its signature`
 
 const MANIFEST = 'phone-app.json'
 const UNSERVED = new Set(['_headers', '_redirects', MANIFEST])
@@ -24,6 +26,9 @@ const ROUTES = [
 ]
 const PARALLEL = 8
 const TIMEOUT_MS = 30_000
+const WORKFLOW = '.github/workflows/phone-site.yml'
+const MAIN = 'refs/heads/main'
+const PROVENANCE = 'https://slsa.dev/provenance/v1'
 
 function args(argv) {
   const out = { origin: 'https://remote.saturaspace.com', dist: null, repo: null }
@@ -67,6 +72,46 @@ async function get(origin, path) {
   const body = Buffer.from(await res.arrayBuffer())
   if (new URL(res.url).origin !== origin) throw new Error(`${path} redirected to another origin, ${new URL(res.url).origin}`)
   return { status: res.status, body, headers: res.headers, url: res.url }
+}
+
+function field(o, ...keys) {
+  let at = o
+  for (const k of keys) at = at && typeof at === 'object' ? at[k] : undefined
+  return at
+}
+
+function attestedDigests(attestation, digest, repo) {
+  const payload = field(attestation, 'bundle', 'dsseEnvelope', 'payload')
+  if (typeof payload !== 'string') return null
+  let statement
+  try {
+    statement = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'))
+  } catch {
+    return null
+  }
+  if (field(statement, 'predicateType') !== PROVENANCE) return null
+  const subjects = field(statement, 'subject')
+  if (!Array.isArray(subjects)) return null
+  const digests = subjects.map((s) => field(s, 'digest', 'sha256')).filter((d) => typeof d === 'string' && /^[0-9a-f]{64}$/.test(d))
+  if (!digests.includes(digest)) return null
+  const workflow = field(statement, 'predicate', 'buildDefinition', 'externalParameters', 'workflow')
+  const url = `https://github.com/${repo}`
+  if (field(workflow, 'repository') !== url || field(workflow, 'path') !== WORKFLOW || field(workflow, 'ref') !== MAIN) return null
+  if (field(statement, 'predicate', 'runDetails', 'builder', 'id') !== `${url}/${WORKFLOW}@${MAIN}`) return null
+  return digests
+}
+
+async function attestedFiles(repo, digest) {
+  const url = `https://api.github.com/repos/${repo}/attestations/sha256:${digest}?predicate_type=provenance`
+  const res = await fetch(url, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'satura-verify-phone-app', 'x-github-api-version': '2022-11-28' }, signal: AbortSignal.timeout(TIMEOUT_MS) })
+  const body = await res.text()
+  if (res.status === 404) return { files: null, count: 0 }
+  if (res.status !== 200) throw new Error(`${url} answered ${res.status}${res.headers.get('x-ratelimit-remaining') === '0' ? ' (rate limit used up)' : ''}`)
+  const list = JSON.parse(body).attestations
+  if (!Array.isArray(list)) throw new Error(`${url} sent no attestation list`)
+  const files = new Set()
+  for (const a of list) for (const d of attestedDigests(a, digest, repo) ?? []) files.add(d)
+  return { files: files.size ? files : null, count: list.length }
 }
 
 async function pool(items, fn) {
@@ -149,7 +194,22 @@ async function main() {
     throw new Error(`${opt.origin}/${MANIFEST} is not a phone app manifest: ${e.message}`)
   }
   const paths = Object.keys(manifest.files).sort()
-  console.log(`${opt.origin} serves commit ${manifest.commit}, ${paths.length} files, ${MANIFEST} sha256 ${sha256(live.body)}`)
+  const digest = sha256(live.body)
+  console.log(`${opt.origin} serves commit ${manifest.commit}, ${paths.length} files, ${MANIFEST} sha256 ${digest}`)
+
+  let attested = null
+  if (opt.repo) {
+    const from = `https://github.com/${opt.repo}/${WORKFLOW}@${MAIN}`
+    try {
+      const { files, count } = await attestedFiles(opt.repo, digest)
+      if (files) {
+        attested = files
+        console.log(`GitHub holds a build attestation of the live ${MANIFEST} from ${from}, ${files.size} subjects`)
+      } else note(count ? `none of the ${count} attestation(s) of the live ${MANIFEST} on GitHub comes from ${from}` : `GitHub has no build attestation of the live ${MANIFEST} (sha256 ${digest}) in ${opt.repo}`)
+    } catch (e) {
+      note(`the attestations of the live ${MANIFEST}: ${e.message}`)
+    }
+  }
 
   let checked = 0
   await pool(paths, async (path) => {
@@ -158,12 +218,13 @@ async function main() {
       if (r.status !== 200) return note(`${path}: status ${r.status}`)
       const got = sha256(r.body)
       if (got !== manifest.files[path]) return note(`${path}: sha256 ${got}, the manifest says ${manifest.files[path]}`)
+      if (attested && !attested.has(got)) return note(`${path}: sha256 ${got} isn't among the attested files`)
       checked++
     } catch (e) {
       note(`${path}: ${e.message}`)
     }
   })
-  console.log(`${checked} of ${paths.length} files match their hashes`)
+  console.log(`${checked} of ${paths.length} files match their hashes${attested ? ' and the attestation' : ''}`)
 
   const rules = opt.dist ? parseHeaderRules(readFileSync(join(resolve(opt.dist), '_headers'), 'utf8')) : null
   for (const [path, file] of ROUTES) {
@@ -212,24 +273,11 @@ async function main() {
     console.log(`${same} of ${local.length} local files equal the live ones`)
   }
 
-  if (opt.repo) {
-    const url = `https://github.com/${opt.repo}/releases/download/phone-${manifest.commit.slice(0, 7)}/${MANIFEST}`
-    try {
-      const res = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(TIMEOUT_MS) })
-      const body = Buffer.from(await res.arrayBuffer())
-      if (res.status !== 200) note(`the release asset ${url} answered ${res.status}`)
-      else if (!body.equals(live.body)) note(`the release asset ${url} differs from the live ${MANIFEST}`)
-      else console.log(`the live ${MANIFEST} equals the release asset ${url}`)
-    } catch (e) {
-      note(`the release asset ${url}: ${e.message}`)
-    }
-  }
-
   if (problems.length) {
-    console.log(`${problems.length} problem(s): ${opt.origin} does NOT serve what its manifest says`)
+    console.log(`${problems.length} problem(s): ${opt.origin} does NOT serve what its manifest${opt.repo ? ' and its attestation say' : ' says'}`)
     process.exit(1)
   }
-  console.log(`OK: ${opt.origin} serves exactly the files of commit ${manifest.commit}`)
+  console.log(`OK: ${opt.origin} serves exactly the files of commit ${manifest.commit}${attested ? `, attested by ${opt.repo}'s ${WORKFLOW} on ${MAIN}` : ''}`)
 }
 
 main().catch((e) => {

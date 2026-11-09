@@ -37,9 +37,10 @@ An instance connects to the hosted relay (`wss://relay.saturaspace.com/ws`) once
 ([`packages/companion-app/README.md`](../../packages/companion-app/README.md)); `remote.status` then
 shows the relay, whether it registered, and `phoneRelay`, the phone site the relay named in its
 welcome (`SATURA_RELAY_PUBLIC_WEB`), which pairing links open. `remote.phoneApp` runs the phone app
-tripwire now; in a dev build `SATURA_PHONE_APP_WEB` and `SATURA_PHONE_APP_RELEASES` point it at a local
-server that serves a `phone-app.json`, the files it lists, and `phone-<short sha>/phone-app.json` as the
-release asset.
+tripwire now; in a dev build `SATURA_PHONE_APP_WEB` points it at a local server that serves a
+`phone-app.json` and the files it lists, and `SATURA_PHONE_APP_ATTESTATIONS` replaces
+`https://api.github.com/repos/saturadev/satura-space/attestations`, the base it asks for
+`/sha256:<hex>` of that `phone-app.json`.
 
 The test project is `~/projects/_satura-test-alt` unless `SATURA_TEST_PROJECT` points elsewhere
 (`scripts/test-project.mjs`). Handles that write files only run on that project.

@@ -3,14 +3,18 @@ import { createHash } from 'node:crypto'
 import type { PhoneAppCheck } from '@shared/remote-protocol'
 
 export const PHONE_WEB = 'https://remote.saturaspace.com'
-const RELEASES = 'https://github.com/saturadev/satura-space/releases/download'
+const ATTESTATIONS = 'https://api.github.com/repos/saturadev/satura-space/attestations'
+const REPO = 'https://github.com/saturadev/satura-space'
+const WORKFLOW = '.github/workflows/phone-site.yml'
+const MAIN = 'refs/heads/main'
+const BUILDER = `${REPO}/${WORKFLOW}@${MAIN}`
+const PROVENANCE = 'https://slsa.dev/provenance/v1'
 const MANIFEST = 'phone-app.json'
 const EVERY_MS = 4 * 3600_000
 const TICK_MS = 10 * 60_000
 const FIRST_MS = 30_000
 const TIMEOUT_MS = 10_000
-const RELEASE_GRACE_MS = 30 * 60_000
-const SHORT_LENGTHS = [7, 8, 9, 10, 12, 40]
+const ATTESTATION_GRACE_MS = 30 * 60_000
 const MAX_FETCHES = 40
 const MAX_BYTES = 24 * 1024 * 1024
 const MAX_PROBLEMS = 6
@@ -44,7 +48,7 @@ let last: PhoneAppCheck | null = null
 let running: Promise<PhoneAppCheck> | null = null
 let lastRunAt = 0
 let timer: NodeJS.Timeout | null = null
-const releaseMissingSince = new Map<string, number>()
+const unattestedSince = new Map<string, number>()
 
 function devUrl(name: string): string | null {
   if (app.isPackaged) return null
@@ -66,8 +70,8 @@ export function watchesPhoneWeb(web: string | null): boolean {
   return web === PHONE_WEB || watchedWeb() !== PHONE_WEB
 }
 
-function releasesBase(): string {
-  return devUrl('SATURA_PHONE_APP_RELEASES') ?? RELEASES
+function attestationsBase(): string {
+  return devUrl('SATURA_PHONE_APP_ATTESTATIONS') ?? ATTESTATIONS
 }
 
 function hostOf(url: string): string {
@@ -78,10 +82,10 @@ function hostOf(url: string): string {
   }
 }
 
-async function get(url: string): Promise<Fetched> {
+async function get(url: string, headers: Record<string, string> = {}): Promise<Fetched> {
   const where = hostOf(url)
   try {
-    const res = await fetch(url, { headers: { 'user-agent': `Satura/${app.getVersion()}`, 'cache-control': 'no-cache' }, redirect: 'follow', signal: AbortSignal.timeout(TIMEOUT_MS) })
+    const res = await fetch(url, { headers: { 'user-agent': `Satura/${app.getVersion()}`, 'cache-control': 'no-cache', ...headers }, redirect: 'follow', signal: AbortSignal.timeout(TIMEOUT_MS) })
     if (res.status >= 500 || res.status === 429) throw new Unreachable(`${where} answered ${res.status}`)
     if (Number(res.headers.get('content-length') ?? 0) > MAX_BYTES) throw new Unreachable(`${where} sent a file too big to check`)
     return { status: res.status, url: res.url || url, type: res.headers.get('content-type') ?? '', body: Buffer.from(await res.arrayBuffer()) }
@@ -109,36 +113,57 @@ function readManifest(body: Buffer): Manifest | null {
   return { commit: o.commit, files }
 }
 
-async function releaseFor(commit: string): Promise<Manifest | null | 'bad'> {
-  const tried = new Set<string>()
-  for (const n of SHORT_LENGTHS) {
-    const short = commit.slice(0, n)
-    if (short.length < n || tried.has(short)) continue
-    tried.add(short)
-    const r = await get(`${releasesBase()}/phone-${short}/${MANIFEST}`)
-    if (r.status === 404) continue
-    if (r.status !== 200) throw new Unreachable(`GitHub answered ${r.status} for phone-${short}`)
-    return readManifest(r.body) ?? 'bad'
-  }
-  return null
+function sha256(bytes: Buffer): string {
+  return createHash('sha256').update(bytes).digest('hex')
 }
 
-function differences(live: Manifest, release: Manifest): string[] {
-  const out: string[] = []
-  if (live.commit !== release.commit) out.push(`the live manifest names commit ${live.commit.slice(0, 12)}, the GitHub release ${release.commit.slice(0, 12)}`)
-  const paths = new Set([...Object.keys(live.files), ...Object.keys(release.files)])
-  for (const p of paths) {
-    if (live.files[p] === release.files[p]) continue
-    out.push(!release.files[p] ? `${p} is live but not in the GitHub release` : !live.files[p] ? `${p} is in the GitHub release but not live` : `${p} has another hash live than in the GitHub release`)
+function field(o: unknown, ...keys: string[]): unknown {
+  let at = o
+  for (const k of keys) at = at && typeof at === 'object' ? (at as Record<string, unknown>)[k] : undefined
+  return at
+}
+
+function attestedDigests(attestation: unknown, digest: string): string[] | null {
+  const payload = field(attestation, 'bundle', 'dsseEnvelope', 'payload')
+  if (typeof payload !== 'string') return null
+  let statement: unknown
+  try {
+    statement = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'))
+  } catch {
+    return null
   }
-  return out
+  if (field(statement, 'predicateType') !== PROVENANCE) return null
+  const subjects = field(statement, 'subject')
+  if (!Array.isArray(subjects)) return null
+  const digests = subjects.map((s) => field(s, 'digest', 'sha256')).filter((d): d is string => typeof d === 'string' && SHA256.test(d))
+  if (!digests.includes(digest)) return null
+  const workflow = field(statement, 'predicate', 'buildDefinition', 'externalParameters', 'workflow')
+  if (field(workflow, 'repository') !== REPO || field(workflow, 'path') !== WORKFLOW || field(workflow, 'ref') !== MAIN) return null
+  if (field(statement, 'predicate', 'runDetails', 'builder', 'id') !== BUILDER) return null
+  return digests
+}
+
+async function attestedFiles(digest: string): Promise<Set<string> | null> {
+  const r = await get(`${attestationsBase()}/sha256:${digest}?predicate_type=provenance`, { accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28' })
+  if (r.status === 404) return null
+  if (r.status !== 200) throw new Unreachable(`GitHub answered ${r.status} for the attestations`)
+  let list: unknown
+  try {
+    list = JSON.parse(r.body.toString('utf8')).attestations
+  } catch {
+    throw new Unreachable(`GitHub sent attestations that aren't JSON`)
+  }
+  if (!Array.isArray(list)) throw new Unreachable(`GitHub sent no attestation list`)
+  const files = new Set<string>()
+  for (const a of list) for (const d of attestedDigests(a, digest) ?? []) files.add(d)
+  return files.size ? files : null
 }
 
 function pathOf(url: string): string {
   return decodeURIComponent(new URL(url).pathname).replace(/^\/+/, '')
 }
 
-async function checkFiles(web: string, m: Manifest, hostId: string): Promise<{ checked: number; problems: string[] }> {
+async function checkFiles(web: string, m: Manifest, attested: Set<string>, hostId: string): Promise<{ checked: number; problems: string[] }> {
   const hashes = new Set(Object.values(m.files))
   const origin = new URL(web).origin
   const queue: { url: string; expect: string | null; label: string; optional: boolean }[] = []
@@ -159,9 +184,10 @@ async function checkFiles(web: string, m: Manifest, hostId: string): Promise<{ c
     }
     checked++
     bytes += r.body.length
-    const sha = createHash('sha256').update(r.body).digest('hex')
+    const sha = sha256(r.body)
     const want = item.expect ?? m.files[pathOf(r.url)] ?? null
     if (want ? sha !== want : !hashes.has(sha)) problems.push(`${item.label} doesn't match the manifest`)
+    else if (!attested.has(sha)) problems.push(`${item.label} isn't among the attested files`)
     if (!/text\/html/i.test(r.type) && !/\.html$|\/$/.test(new URL(r.url).pathname)) continue
     for (const ref of r.body.toString('utf8').matchAll(REF)) {
       let next: URL
@@ -188,20 +214,18 @@ async function runCheck(ctx: WatchContext): Promise<PhoneAppCheck> {
     const m = readManifest(live.body)
     if (!m) return result('mismatch', `${where}/${MANIFEST} isn't a phone app manifest.`)
     const short = m.commit.slice(0, 12)
-    const release = await releaseFor(m.commit)
-    if (release === 'bad') return result('mismatch', `The GitHub release for ${short} holds no valid ${MANIFEST}.`, { commit: m.commit })
-    if (!release) {
-      const since = releaseMissingSince.get(m.commit) ?? Date.now()
-      releaseMissingSince.set(m.commit, since)
-      if (Date.now() - since < RELEASE_GRACE_MS) return result('unknown', `GitHub has no phone-${m.commit.slice(0, 7)} release yet.`, { commit: m.commit })
-      return result('mismatch', `${where} runs commit ${short}, which has no phone release on GitHub.`, { commit: m.commit })
+    const digest = sha256(live.body)
+    const attested = await attestedFiles(digest)
+    if (!attested) {
+      const since = unattestedSince.get(digest) ?? Date.now()
+      unattestedSince.set(digest, since)
+      if (Date.now() - since < ATTESTATION_GRACE_MS) return result('unknown', `No attestation from the phone-site workflow on main covers ${where}/${MANIFEST} (commit ${short}) yet.`, { commit: m.commit })
+      return result('mismatch', `No attestation from the phone-site workflow on main covers ${where}/${MANIFEST} (commit ${short}), 30 minutes after this desktop first saw it.`, { commit: m.commit })
     }
-    releaseMissingSince.delete(m.commit)
-    const diff = differences(m, release)
-    if (diff.length) return result('mismatch', `${where}/${MANIFEST} differs from the GitHub release of ${short}.`, { commit: m.commit, problems: diff.slice(0, MAX_PROBLEMS) })
-    const files = await checkFiles(web, m, ctx.hostId())
-    if (files.problems.length) return result('mismatch', `Files on ${where} don't match the GitHub release of ${short}.`, { commit: m.commit, checked: files.checked, problems: files.problems.slice(0, MAX_PROBLEMS) })
-    return result('ok', `${where} serves commit ${short}, ${files.checked} files match its GitHub release.`, { commit: m.commit, checked: files.checked })
+    unattestedSince.delete(digest)
+    const files = await checkFiles(web, m, attested, ctx.hostId())
+    if (files.problems.length) return result('mismatch', `Files on ${where} don't match the attested build of ${short}.`, { commit: m.commit, checked: files.checked, problems: files.problems.slice(0, MAX_PROBLEMS) })
+    return result('ok', `${where} serves commit ${short}, ${files.checked} files match its attested build.`, { commit: m.commit, checked: files.checked })
   } catch (e) {
     return result('unknown', e instanceof Unreachable ? `Couldn't check: ${e.message}.` : `Couldn't check: ${(e as Error).message}.`)
   }
