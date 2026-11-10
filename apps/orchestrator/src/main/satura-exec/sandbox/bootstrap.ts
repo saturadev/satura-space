@@ -849,7 +849,7 @@ padCalls.get = (id?: unknown) => {
   return scratchpadObject(ref)
 }
 
-const driftObject = driftApi(mainPage as any, tunerObject, point, say, ask)
+const driftObject = driftApi(mainPage as any, tunerObject, point, say, ask, (tab) => rpc('tabs', { window: null, action: 'switch', tab }))
 const lookHere = driftObject.look as (target?: unknown) => Promise<unknown>
 driftObject.look = async (target?: unknown): Promise<unknown> => {
   const seen = await lookHere(target)

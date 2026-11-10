@@ -13,6 +13,7 @@ const TUNER = '[data-tuner-pane] >> visible=true'
 const PLAYER = '[data-unity-player] >> visible=true'
 
 const inTuner = (page: Api, name: string) => page.locator(TUNER).first().getByRole('button', { name, exact: true }).first()
+const PLAYER_PARTS = new Set(['player', 'play', 'pause', 'add-player', 'refresh'])
 const inPlayer = (page: Api, name: string | RegExp) => page.locator(PLAYER).first().getByRole('button', { name }).first()
 
 const UI: Record<string, UiPart> = {
@@ -200,7 +201,7 @@ function linesOf(text: Lines, what: string): string[] {
   return list.map((t) => String(t ?? '').trim()).filter(Boolean)
 }
 
-export function driftApi(page: PageLike & Api, tuner: Api, point: Function, say: Function, ask: Function): Record<string, unknown> {
+export function driftApi(page: PageLike & Api, tuner: Api, point: Function, say: Function, ask: Function, reveal: (tab: string) => Promise<unknown>): Record<string, unknown> {
   async function ensureTuner(): Promise<void> {
     if (!(await tunerOpen(page))) await tuner.open({ scene: true })
   }
@@ -373,12 +374,22 @@ export function driftApi(page: PageLike & Api, tuner: Api, point: Function, say:
     return { kind: 'component', path: obj[0].path, component, label: `${obj[0].path}/${component}`, others }
   }
 
+  async function revealPlayer(name: string, spot: unknown): Promise<unknown> {
+    if (!PLAYER_PARTS.has(name) || !(spot instanceof Locator) || (await spot.count())) return spot
+    try {
+      await reveal('Unity Player')
+      await spot.waitFor({ state: 'attached', timeout: 2000 })
+    } catch {
+    }
+    return spot
+  }
+
   function uiHelp(): string {
     return `App parts: ${Object.keys(UI).map((k) => `ui:${k}`).join(', ')}.`
   }
 
   async function spotOf(t: Target): Promise<unknown> {
-    if (t.kind === 'ui') return UI[t.name].find(page, tuner)
+    if (t.kind === 'ui') return revealPlayer(t.name, UI[t.name].find(page, tuner))
     if (t.kind === 'object') return tuner.object(t.path)
     if (t.kind === 'component') return tuner.component(t.component)
     return tuner.field(t.field, t.component ? { section: t.component } : {})
