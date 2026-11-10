@@ -50,9 +50,9 @@ namespace Rollmates
         public bool Within(Vector3 at, float reach)
         {
             if (Taken) return false;
-            Vector3 d = at - transform.position;
+            var d = at - transform.position;
             d.y = 0f;
-            return d.sqrMagnitude <= Mathf.Max(reach, 1f) * Mathf.Max(reach, 1f);
+            return d.sqrMagnitude <= reach * reach;
         }
 
         public void Take()

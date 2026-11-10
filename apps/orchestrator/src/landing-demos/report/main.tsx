@@ -12,11 +12,11 @@ import HealthPackReport from './hollowmere/report'
 import healthPackSource from './hollowmere/HealthPack.cs.txt?raw'
 import './report.css'
 
-const ROOT = '/hollowmere'
-const FILE = `${ROOT}/.sspace/reports/health-pack-fix/report.tsx`
+const ROOT = '/Users/Shared/dev/projects/hollowmere'
+const FILE = `${ROOT}/.sspace/reports/health-pack/report.tsx`
 const MEDIA: Record<string, string> = {
-  [`${ROOT}/.sspace/reports/health-pack-fix/health-pack-before.mp4`]: '/media/health-pack-before.mp4?v=1',
-  [`${ROOT}/.sspace/reports/health-pack-fix/health-pack-after.mp4`]: '/media/health-pack-after.mp4?v=1'
+  [`${ROOT}/.sspace/videos/health-pack-before.mp4`]: '/media/health-pack-before.mp4?v=2',
+  [`${ROOT}/.sspace/videos/health-pack-after.mp4`]: '/media/health-pack-after.mp4?v=2'
 }
 const CODE: Record<string, string> = { 'Assets/Rollmates/Scripts/HealthPack.cs': healthPackSource }
 
