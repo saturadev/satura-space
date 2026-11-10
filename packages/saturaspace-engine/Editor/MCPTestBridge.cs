@@ -330,7 +330,7 @@ public static partial class MCPTestBridge
         var rawInput = RawInputStream.Instance;
         if (rawInput != null) rawInput.SetInputSuspended(revealed);
         SyncCursorLockEmulation(!revealed);
-        SyncEditorIdle(ManagesEditorIdle || (EditorApplication.isPlaying && !revealed));
+        SyncEditorIdle(ManagesEditorIdle || (EditorApplication.isPlaying && !revealed) || TunerWantsFastIdle(revealed));
         TpAdd(TP_BR_STREAM, tp);
 
         tp = TpNow();

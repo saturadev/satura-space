@@ -88,6 +88,11 @@ public static partial class MCPTestBridge
     [DllImport(OBJC, EntryPoint = "ivar_getTypeEncoding")]
     static extern IntPtr ObjcIvarType(IntPtr ivar);
 
+    static bool TunerWantsFastIdle(bool revealed)
+    {
+        return Application.platform != RuntimePlatform.OSXEditor && !revealed && (_tuners.Count > 0 || s_TiSessions.Count > 0);
+    }
+
     static bool TunerTickBoosted => _tunerTickBase > 0 && _tunerTickWant == TUNER_TICK_UPS;
 
     static int TunerTickUps => _tunerTickBase > 0 ? _tunerTickWant : -1;
