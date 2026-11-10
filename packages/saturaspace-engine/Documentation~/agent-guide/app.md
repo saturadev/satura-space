@@ -32,7 +32,7 @@ return { before, after: await tabs.count() }
 ```
 
 ```js
-await snapshot(page.getByRole('tablist'), { depth: 4, max: 4000 })   // - button "New session" [ref=e9]
+await snapshot(page.getByRole('tablist').first(), { depth: 4, max: 4000 })   // - button "New session" [ref=e9]
 await page.locator('aria-ref=e9').click()
 await page.evaluate(() => window.api)                                  // the app's bridge
 ```
@@ -46,7 +46,7 @@ await page.evaluate(() => window.api)                                  // the ap
 ## Helpers
 
 ```js
-await shot(page.getByRole('tablist'))                 // image
+await shot(page.getByRole('tablist').first())                 // image
 await show(tuner.inspector)                           // size its pane
 await point(target, 'This is the Play button', { ms: 2000, spotlight: true, camera: false })
 await say('Done', { at: target, wait: true })

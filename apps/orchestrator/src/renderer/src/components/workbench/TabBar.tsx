@@ -380,6 +380,7 @@ export function TabBar({
         paddingRight: insetRight ? WINDOW_CONTROLS_INSET : undefined
       }}
       onDoubleClick={onBarDoubleClick}
+      role="tablist"
       data-tabbar
       data-tabbar-group={groupId}
       ref={barRef}
