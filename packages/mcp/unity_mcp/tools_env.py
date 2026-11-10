@@ -389,7 +389,11 @@ def resource_groups(status: list[dict]) -> tuple[list[dict], list[dict]]:
 
 class EnvRepo:
     def __init__(self, cwd: str):
-        self.root = _rev_parse_line(_git(cwd, "rev-parse", "--show-toplevel"))
+        proc = _run_git(cwd, ["rev-parse", "--show-toplevel"])
+        if proc.returncode != 0 and "not a git repository" in proc.stderr.decode("utf-8", "replace"):
+            raise EnvError(f"{cwd} is not a git repository, so there are no Env Changes to list or commit. "
+                           "env.* works once the project is in git (git init).", "NotGitRepo")
+        self.root = _rev_parse_line(proc.stdout if proc.returncode == 0 else _git(cwd, "rev-parse", "--show-toplevel"))
         common = _rev_parse_line(_git(self.root, "rev-parse", "--path-format=absolute", "--git-common-dir"))
         project = os.path.dirname(common) if os.path.basename(common) == ".git" else self.root
         self.sspace = os.path.join(project, SSPACE_DIR)
