@@ -97,6 +97,8 @@ public static partial class SaturaHandles
         long _lateMs = -1;
         double _startedAt = -1;
         double _endedAt = -1;
+        double _startedGame = -1;
+        double _endedGame = -1;
         int _startFrame;
         int _endFrame;
         int _lastFrame;
@@ -117,6 +119,7 @@ public static partial class SaturaHandles
             Status = "running";
             InPlayMode = Application.isPlaying;
             _startedAt = WallSeconds;
+            _startedGame = Application.isPlaying ? Time.timeAsDouble : -1;
             _startFrame = Time.frameCount;
             _lastFrame = _startFrame;
         }
@@ -333,6 +336,7 @@ public static partial class SaturaHandles
         void MarkEnded(bool playModeEnded)
         {
             _endedAt = WallSeconds;
+            _endedGame = Application.isPlaying ? Time.timeAsDouble : -1;
             _endFrame = playModeEnded || Time.frameCount < _startFrame ? Math.Max(_lastFrame, _startFrame) : Time.frameCount;
             if (Handle.Scenario)
             {
@@ -412,7 +416,9 @@ public static partial class SaturaHandles
             {
                 var end = _endedAt >= 0 ? _endedAt : WallSeconds;
                 var endFrame = _endedAt >= 0 ? _endFrame : Math.Max(Time.frameCount, _lastFrame);
-                sb.Append(",\"seconds\":").Append(Math.Max(0, end - _startedAt).ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+                var gameEnd = _endedAt >= 0 ? _endedGame : Application.isPlaying ? Time.timeAsDouble : -1;
+                var span = Handle.Scenario && _startedGame >= 0 && gameEnd >= _startedGame ? gameEnd - _startedGame : end - _startedAt;
+                sb.Append(",\"seconds\":").Append(Math.Max(0, span).ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
                 sb.Append(",\"frames\":").Append(Math.Max(0, endFrame - _startFrame));
             }
             if (full && Logs.Count > 0)
