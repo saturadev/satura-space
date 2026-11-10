@@ -42,7 +42,7 @@ namespace HotReloadPrototype.Editor {
                 .FirstOrDefault(a => a.name == targetAssemblyName);
             if (target == null) return $"assembly '{targetAssemblyName}' not found in the project";
 
-            parseOptions = new CSharpParseOptions(LanguageVersion.CSharp9, preprocessorSymbols: target.defines);
+            parseOptions = new CSharpParseOptions(LanguageVersion.CSharp9, preprocessorSymbols: ResponseFileDefines.With(target.defines));
 
             treesByPath.Clear();
             orderedKeys.Clear();

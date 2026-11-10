@@ -150,8 +150,8 @@ static class _MCPExecWarmup
                 var assemblies = UnityCompilation.GetAssemblies(AssembliesType.Editor);
                 var target = assemblies.FirstOrDefault(a => a.name == "Assembly-CSharp-Editor")
                     ?? assemblies.FirstOrDefault();
-                return target != null ? target.defines : Array.Empty<string>();
-            } catch { return Array.Empty<string>(); }
+                return ResponseFileDefines.With(target?.defines);
+            } catch { return ResponseFileDefines.With(null); }
         }
 
         static List<MetadataReference> DomainReferences() {
