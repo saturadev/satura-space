@@ -51,7 +51,8 @@ interface Video {
   prev: { at: number; fed: number; encoded: number; sent: number; bytes: number; resent: number } | null
 }
 
-const IDLE_REFEED_MS = 200
+const REFEED_MS = 25
+const STEADY_GAP_MS = 100
 const MISSING_MS = 1500
 const WRITTEN_KEEP = 48
 const OFFS_KEEP = 120
@@ -66,7 +67,9 @@ let canvas: OffscreenCanvas | null = null
 let scaler: string | null = null
 let lastEncodeAt = 0
 let pendingFrame: FrameMsg | null = null
-let lastFed: { msg: FrameMsg; tex: ImportedTex } | null = null
+let lastFed: { msg: FrameMsg; tex: ImportedTex; at: number } | null = null
+let refeedTimer: ReturnType<typeof setTimeout> | null = null
+let realAt = 0
 let busy = 0
 let video: Video | null = null
 const missing = new Map<string, number>()
@@ -281,7 +284,7 @@ function onRtc(m: RvViewRtc): void {
 function encode(msg: FrameMsg, tex: ImportedTex): void {
   const c = cfg
   if (!c) return
-  lastFed = { msg, tex }
+  lastFed = { msg, tex, at: performance.now() }
   const v = video
   if (!v || v.pc.connectionState !== 'connected') return
   if (msg.t - lastEncodeAt < (1000 / c.fps) * 0.85) return
@@ -320,6 +323,32 @@ function encode(msg: FrameMsg, tex: ImportedTex): void {
   }
 }
 
+function arm(ms: number): void {
+  if (refeedTimer) clearTimeout(refeedTimer)
+  refeedTimer = setTimeout(refeed, ms)
+}
+
+function fresh(msg: FrameMsg, tex: ImportedTex): void {
+  const at = performance.now()
+  const gap = at - realAt
+  realAt = at
+  encode(msg, tex)
+  arm(gap < STEADY_GAP_MS ? Math.max(REFEED_MS, gap * 1.5) : REFEED_MS)
+}
+
+function refeed(): void {
+  refeedTimer = null
+  const f = lastFed
+  if (!f || !cfg || f.msg.id !== active) return
+  const s = slots.get(f.msg.id)
+  if (!s || s.generation !== f.msg.generation || s.map.get(f.msg.surfaceId) !== f.tex) {
+    lastFed = null
+    return
+  }
+  encode({ ...f.msg, t: f.msg.t + performance.now() - f.at }, f.tex)
+  arm(REFEED_MS)
+}
+
 function onFrame(msg: FrameMsg): void {
   let h = holds.get(msg.id)
   if (!h || h.gen !== msg.generation) {
@@ -344,7 +373,7 @@ function onFrame(msg: FrameMsg): void {
     return
   }
   pendingFrame = null
-  encode(msg, tex)
+  fresh(msg, tex)
   ack(msg.id)
 }
 
@@ -426,7 +455,7 @@ sharedTexture.setSharedTextureReceiver(async (data, meta?: { id: string; surface
     pendingFrame = null
     const h = holds.get(meta.id)
     if (h) h.pending = -1
-    encode(p, tex)
+    fresh(p, tex)
     ack(meta.id)
   }
 })
@@ -449,19 +478,7 @@ ipcRenderer.on('rv:config', (_e, msg: { id: string | null; config: RvEncoderConf
     missing.clear()
   }
 })
-setInterval(() => {
-  askMissing(performance.now())
-  const f = lastFed
-  if (!f || !cfg || f.msg.id !== active) return
-  const t = performance.timeOrigin + performance.now()
-  if (t - lastEncodeAt < IDLE_REFEED_MS) return
-  const s = slots.get(f.msg.id)
-  if (!s || s.generation !== f.msg.generation || s.map.get(f.msg.surfaceId) !== f.tex) {
-    lastFed = null
-    return
-  }
-  encode({ ...f.msg, t }, f.tex)
-}, 50)
+setInterval(() => askMissing(performance.now()), 50)
 setInterval(() => {
   const v = video
   if (v) void readStats(v).catch(() => {})
