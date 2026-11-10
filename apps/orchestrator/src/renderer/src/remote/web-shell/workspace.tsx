@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
-import { ChevronLeft, CircleChevronDown, Ellipsis, Folder, History, Keyboard, KeyboardOff, Layers, ListFilter, CircleX } from 'lucide-react'
+import { ChevronLeft, CircleChevronDown, CornerDownLeft, Ellipsis, Folder, History, Keyboard, KeyboardOff, Layers, ListFilter, CircleX } from 'lucide-react'
 import { listMacs, pathHostId } from '../macs'
 import { DesktopTile } from '../desktop-art'
 import type { WireAction } from '../../lib/actions/action-tree'
@@ -461,6 +461,23 @@ function KeyChip({ spec, wide, cell }: { spec: KeySpec; wide?: boolean; cell?: b
   )
 }
 
+function SendKey({ size, className }: { size?: number; className?: string }) {
+  const pending = useShell((s) => !!s.pending.composer)
+  return (
+    <button
+      type="button"
+      aria-label="Send"
+      onMouseDown={noFocus}
+      onClick={() => sendNow()}
+      className={`ws-press flex shrink-0 items-center justify-center bg-[rgb(10_132_255)] text-white ${className ?? 'h-[34px] w-11 rounded-full'} ${pending ? 'remote-pending' : ''}`}
+      style={size ? { width: size, height: size, borderRadius: 999 } : undefined}
+      data-ws-send
+    >
+      <CornerDownLeft size={size ? Math.min(17, size * 0.5) : 18} strokeWidth={2.6} />
+    </button>
+  )
+}
+
 function KeyboardToggle({ size, className }: { size?: number; className?: string }) {
   const typing = useShell((s) => s.typing)
   return (
@@ -488,6 +505,8 @@ function ctrlChar(ch: string): string | null {
 const HARD_CTRL = new Set(['c', 'd', 'z', 'l', 'r'])
 const DETACHED_RULE = 'rgb(136 136 136 / 0.7)'
 const MIN_ROWS = 4
+const PAD_SHARE = 0.6
+const CAP_SETTLE_MS = 700
 
 interface Placement {
   left: number
@@ -500,18 +519,39 @@ interface Placement {
   detached: boolean
 }
 
-function placeOver(box: InputBox, lines: number): Placement {
+function placeOver(box: InputBox, lines: number, fit = 0): Placement {
   const ch = box.ch
   const detached = box.caretY < box.clipTop - 0.5 || box.caretY + ch > box.clipBottom + 0.5
   const all = Math.max(1, Math.floor((box.clipBottom - box.clipTop + 0.5) / ch))
   const below = detached ? 1 : Math.max(1, Math.floor((box.clipBottom - box.caretY + 0.5) / ch))
-  const rows = Math.min(Math.max(1, lines), Math.max(below, Math.min(MIN_ROWS, all)))
+  const rows = Math.min(Math.max(1, lines), fit > 0 ? fit : Math.max(below, Math.min(MIN_ROWS, all)))
   const height = rows * ch
   const want = !detached ? box.caretY : box.caretY < box.clipTop ? box.clipTop : box.clipBottom - height
   const top = Math.max(box.clipTop, Math.min(want, box.clipBottom - height))
   const attached = !detached && Math.abs(top - box.caretY) < 0.5
   const pad = box.x - box.bx
   return { left: box.bx, top, width: box.bw, height, rows, pad, cut: attached ? pad + Math.max(0, box.caretX - box.x) : 0, detached }
+}
+
+function anchored(box: InputBox | null): InputBox | null {
+  if (!box || !anchor) return box
+  return { ...box, caretX: box.x + anchor.dx, caretY: box.y + anchor.row * box.ch }
+}
+
+function padTo(want: number, why: string): void {
+  if (want === padded) return
+  const pty = useShell.getState().workspace?.panel?.ptyId ?? null
+  if (padded && pty !== padPty) {
+    console.info(`[web-shell] ${padded} empty lines stay in Claude's input of ${padPty}, the composer now types into ${pty ?? 'no terminal'}`)
+    padded = 0
+    anchor = null
+    return
+  }
+  const diff = want - padded
+  if (call('type', diff > 0 ? '\n'.repeat(diff) : '\x7f'.repeat(-diff)) !== true) return
+  console.info(`[web-shell] Claude's input ${diff > 0 ? `gets ${diff} more` : `drops ${-diff}`} empty lines, ${padded + 1} -> ${want + 1} lines, ${why}`)
+  padded = want
+  padPty = pty
 }
 
 function useOverlayBox(): InputBox | null {
@@ -524,17 +564,28 @@ function useOverlayBox(): InputBox | null {
 }
 
 let draft = ''
+let padded = 0
+let padPty: string | null = null
+let anchor: { row: number; dx: number; h: number } | null = null
 let sendNow = (): void => {}
 let addDraft = (_value: string): boolean => false
 
 function Composer({ landscape }: { landscape: boolean }) {
   const typing = useShell((s) => s.typing)
   const sending = useShell((s) => !!s.pending.composer)
-  const box = useOverlayBox()
+  const raw = useOverlayBox()
+  const box = anchored(raw)
   const [text, setTextState] = useState(draft)
   const [lines, setLines] = useState(1)
+  const [cap, setCap] = useState(Infinity)
   const ref = useRef<HTMLTextAreaElement | null>(null)
-  const place = box ? placeOver(box, lines) : null
+  const rawRef = useRef(raw)
+  rawRef.current = raw
+  const all = raw ? Math.max(1, Math.floor((raw.clipBottom - raw.clipTop + 0.5) / raw.ch)) : 0
+  const room = box ? Math.floor((box.clipBottom - box.caretY + 0.5) / box.ch) - 2 : 0
+  const padWant = raw ? Math.max(0, Math.min(lines - 1, Math.floor(all * PAD_SHARE), cap - 1, room)) : 0
+  const fit = anchor ? padWant + 1 : 0
+  const place = box ? placeOver(box, lines, fit) : null
   const setText = (value: string): void => {
     draft = value
     setTextState(value)
@@ -556,15 +607,39 @@ function Composer({ landscape }: { landscape: boolean }) {
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
+    const kept = el.scrollTop
+    const atEnd = document.activeElement === el && el.selectionEnd === el.value.length
     el.style.height = '0px'
     if (box && place) {
       const n = Math.max(1, Math.round(el.scrollHeight / box.ch))
-      el.style.height = `${placeOver(box, n).height}px`
+      el.style.height = `${placeOver(box, n, fit).height}px`
       if (n !== lines) setLines(n)
+    } else el.style.height = `${Math.min(120, Math.max(22, el.scrollHeight))}px`
+    el.scrollTop = atEnd ? el.scrollHeight : kept
+  }, [text, typing, box, fit, place?.cut, place?.pad, place?.width])
+  useEffect(() => {
+    if (!raw) {
+      if (!typing) padTo(0, 'the keyboard closed')
       return
     }
-    el.style.height = `${Math.min(120, Math.max(22, el.scrollHeight))}px`
-  }, [text, typing, box, place?.cut, place?.pad, place?.width])
+    if (!padded && anchor && raw.h <= anchor.h + 0.5) {
+      anchor = null
+      if (cap !== Infinity) setCap(Infinity)
+    }
+    if (padWant > 0 && !anchor) anchor = { row: Math.max(0, Math.round((raw.caretY - raw.y) / raw.ch)), dx: Math.max(0, raw.caretX - raw.x), h: raw.h }
+    padTo(padWant, `the composer has ${lines} lines`)
+    if (!padded || !anchor) return
+    const t = window.setTimeout(() => {
+      const b = rawRef.current
+      if (!b || !anchor) return
+      const shown = Math.max(1, Math.round(b.h / b.ch) - anchor.row)
+      if (shown >= padded + 1) return
+      console.info(`[web-shell] Claude's input stops growing at ${shown} lines with ${padded + 1} in it, the composer scrolls past that`)
+      padTo(shown - 1, "Claude's input is at its full height")
+      setCap(shown)
+    }, CAP_SETTLE_MS)
+    return () => window.clearTimeout(t)
+  }, [padWant, typing, !!raw, raw?.h])
   const where = place ? (place.detached ? 'detached' : 'over') : 'docked'
   useEffect(() => {
     if (!typing) return
@@ -573,6 +648,7 @@ function Composer({ landscape }: { landscape: boolean }) {
   }, [typing, where])
   const send = (): void => {
     const value = text
+    if (value || hasShots()) padTo(0, 'the composer sends')
     if (hasShots()) {
       setText('')
       void sendShots(value, setText)
@@ -628,7 +704,7 @@ function Composer({ landscape }: { landscape: boolean }) {
             value={text}
             rows={1}
             placeholder={place ? '' : 'Type for the terminal'}
-            enterKeyHint="send"
+            enterKeyHint="enter"
             autoCapitalize="off"
             autoCorrect="off"
             autoComplete="off"
@@ -647,7 +723,7 @@ function Composer({ landscape }: { landscape: boolean }) {
             onKeyDown={(e) => {
               const k = e.key
               if (e.nativeEvent.isComposing) return
-              if (k === 'Enter' && !e.shiftKey) {
+              if (k === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault()
                 send()
                 return
@@ -674,7 +750,7 @@ function Composer({ landscape }: { landscape: boolean }) {
                 sendKey(arrow)
               }
             }}
-            className={place ? `ws-field block w-full resize-none bg-transparent outline-none ${lines > place.rows ? 'overflow-y-auto' : 'overflow-hidden'}` : 'ws-field max-h-[120px] min-w-0 flex-1 resize-none bg-transparent leading-[22px] text-[var(--ws-ink)] outline-none'}
+            className={place ? `ws-field block w-full resize-none overscroll-contain bg-transparent outline-none ${lines > place.rows ? 'overflow-y-auto' : 'overflow-hidden'}` : 'ws-field max-h-[120px] min-w-0 flex-1 resize-none overflow-y-auto overscroll-contain bg-transparent leading-[22px] text-[var(--ws-ink)] outline-none'}
             style={
               box && place
                 ? { fontFamily: box.font, fontSize: box.size, fontWeight: box.weight as CSSProperties['fontWeight'], letterSpacing: box.spacing, lineHeight: `${box.ch}px`, color: box.fg, caretColor: box.caret, textIndent: place.cut ? place.cut - place.pad : 0, padding: `0 0 0 ${place.pad}px`, border: 0, borderRadius: 0 }
@@ -725,7 +801,8 @@ function KeyBar({ panel }: { panel: Panel }) {
           {NORMAL_KEYS.slice(0, 6).map((k) => <KeyChip key={k.name} spec={k} cell />)}
           <AttachKey className={GRID_KEY} />
           {NORMAL_KEYS.slice(6).map((k) => <KeyChip key={k.name} spec={k} cell />)}
-          <KeyboardToggle className={`col-span-2 ${GRID_KEY}`} />
+          <KeyboardToggle className={GRID_KEY} />
+          <SendKey className={GRID_KEY} />
         </div>
       )}
     </div>
@@ -886,7 +963,7 @@ function Landscape({ ws, view }: { ws: Workspace | null; view: View }) {
     pushInsets(view.safe.t + view.top, kb + ch, gl, gr, view.corner, view.safe)
   }, [view, kb, gl, gr, terminal, c, webReady, editing])
   const avail = view.h - kb - 32
-  const navCount = 2 + (terminal ? 1 : 0) + (ws?.restore ? 1 : 0)
+  const navCount = 2 + (terminal ? (panel?.menu.length ? 1 : 2) : 0) + (ws?.restore ? 1 : 0)
   const keys: { id: string; icon: string; label: string; run: (el: HTMLElement) => void; control: string }[] = []
   if (terminal && panel) {
     if (panel.menu.length) {
@@ -936,7 +1013,12 @@ function Landscape({ ws, view }: { ws: Workspace | null; view: View }) {
       )}
     </>
   )
-  const kbButton = terminal ? <KeyboardToggle size={d} /> : null
+  const kbButton = terminal ? (
+    <>
+      <KeyboardToggle size={d} />
+      {!panel?.menu.length && <SendKey size={d} />}
+    </>
+  ) : null
   const actions = (
     <>
       {viewing && <StreamBadge size={d} />}
