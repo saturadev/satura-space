@@ -1,6 +1,6 @@
 {
   "name": "satura-space",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "private": true,
   "description": "Satura Space: run coding agents on a Unity project and watch and play what they built, live",
   "author": "saturadev",
