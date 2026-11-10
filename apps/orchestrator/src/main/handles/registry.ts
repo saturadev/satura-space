@@ -43,6 +43,7 @@ export interface MainHandle {
   params: HandleParams
   long?: boolean
   agentOnly?: boolean
+  released?: boolean
   run(params: HandleParams, ctx: HandleCtx): Promise<unknown>
 }
 
@@ -82,7 +83,7 @@ censusTrack('handles.runs', runs)
 let nextRun = 1
 
 export function defineHandle(handle: MainHandle): MainHandle {
-  if (!app.isPackaged) handles.set(handle.name, handle)
+  if (!app.isPackaged || handle.released) handles.set(handle.name, handle)
   return handle
 }
 
@@ -226,8 +227,7 @@ async function rendererList(ctx: CallCtx): Promise<HandleInfo[]> {
 }
 
 export async function listHandles(filter: string, ctx: CallCtx): Promise<HandleInfo[]> {
-  if (app.isPackaged) return []
-  const main: HandleInfo[] = [...handles.values()].map((h) => ({
+  const main: HandleInfo[] = [...handles.values()].filter((h) => !app.isPackaged || h.released).map((h) => ({
     name: h.name,
     description: h.description,
     side: 'main',
@@ -235,7 +235,7 @@ export async function listHandles(filter: string, ctx: CallCtx): Promise<HandleI
     ...(h.long ? { long: true } : {}),
     ...(h.agentOnly ? { agentOnly: true } : {})
   }))
-  const all = [...main, ...(await rendererList(ctx))]
+  const all = app.isPackaged ? main : [...main, ...(await rendererList(ctx))]
   return all.filter((h) => handleMatches(h, filter)).sort((a, b) => a.name.localeCompare(b.name))
 }
 
@@ -243,8 +243,8 @@ export async function callHandle(name: string, rawParams: unknown, ctx: CallCtx,
   const started = Date.now()
   const cursor = logCursor(ctx.window)
   const fail = (error: string): HandleResult => ({ handle: name, status: 'error', error, logs: callLogs(cursor), ms: Date.now() - started, mark: currentMark(ctx.window) })
-  if (app.isPackaged) return fail('App handles exist only in dev builds.')
   const handle = handles.get(name)
+  if (app.isPackaged && !handle?.released) return fail(`${name} exists only in dev builds. app.handles() lists the ones this build has.`)
   if (!handle) {
     const theirs = (await rendererList(ctx)).find((h) => h.name === name)
     if (!theirs) return fail(`There is no handle ${name}. app.handles() lists them.`)

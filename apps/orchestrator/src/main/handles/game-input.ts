@@ -55,6 +55,7 @@ defineHandle({
 defineHandle({
   name: 'remote.gameInput',
   side: 'main',
+  released: true,
   description:
     "Reads the phone game-input link on the Mac: whether the phone's input channels are open, which world the input goes to (the one the phone is showing), the phone sender id, what it holds right now (keys, mouse buttons, gamepad buttons), message counts on the reliable and fast channels, releases done for it (disconnect, panel change, silence), the scheme watch and the overrides file. source: a world id (a clone's, say) makes the phone's video session stream that world and send input there, a dev check for routing until the phone can pick players itself; the phone's next panel change resets it.",
   params: { source: '' },
@@ -98,6 +99,7 @@ function brief(eff: RcEffective, full: boolean): Record<string, unknown> {
 defineHandle({
   name: 'remote.controls',
   side: 'main',
+  released: true,
   description:
     "Reads the phone game controls of the project: the generated layout (ProjectSettings/SaturaRemote/controls.generated.json, rewritten by the editor from the Input System assets on every import), the agent's overrides (controls.overrides.json next to it) and the effective layout the phone shows, with every stale or invalid override listed in issues. Per control: action id, path, kind (stick, axis, button, pointer), what it presses, behavior and which fields an override changed. world: a world id instead of the project's primary. full: true returns the whole effective layout and both files.",
   params: { world: '', full: false },
@@ -118,6 +120,7 @@ defineHandle({
 defineHandle({
   name: 'remote.controls.validate',
   side: 'main',
+  released: true,
   description:
     'Checks a phone controls overrides object against the generated layout without writing anything: returns the issues (stale action or binding ids, bad keys, bad placements, gamepad outputs without the module) and the effective layout it would give. overrides: the object to check; leave it out to check controls.overrides.json on disk. Write the file yourself once it has no issues.',
   params: { world: '', overrides: null, full: false },
@@ -134,6 +137,7 @@ defineHandle({
 defineHandle({
   name: 'remote.controls.regenerate',
   side: 'main',
+  released: true,
   description:
     "Has the editor rewrite ProjectSettings/SaturaRemote/controls.generated.json from the project's Input System assets now (it also does this on every .inputactions import and on load), then returns what changed and the effective layout with the overrides applied, so stale overrides show up right away.",
   params: { world: '' },
@@ -149,6 +153,7 @@ defineHandle({
 defineHandle({
   name: 'remote.controls.gamepadModule',
   side: 'main',
+  released: true,
   description:
     "Turns the Satura Remote gamepad module on or off in the project: the scripting define SATURA_REMOTE_GAMEPAD (Standalone and the active build target) that compiles the engine's SaturaSpace.Sdk.RemoteGamepad assembly, a virtual gamepad the phone drives. Only then can controls.overrides.json switch a control or the whole layout to drive \"gamepad\". on: true or false; leave it out to only read the state. Scripts recompile after a change; save the project to keep the define.",
   params: { world: '', on: null },
