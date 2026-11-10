@@ -611,7 +611,15 @@ def snake(args: dict, renames: dict | None = None, drop: tuple = ()) -> dict:
     return out
 
 
-FPS_WAIT = 4.0
+FPS_WAIT = 6.0
+FPS_WINDOW = 2.0
+
+
+def _status_written(entry: dict) -> float:
+    try:
+        return (Path(str(entry.get("dir") or "")) / ".sspace" / ".mcp_status.json").stat().st_mtime
+    except OSError:
+        return 0.0
 
 
 async def op_fps(args: dict, root: str) -> dict:
@@ -632,20 +640,33 @@ async def op_fps(args: dict, root: str) -> dict:
         raise OpError(str(r.get("error") or "unknown error"))
     entries = [e for e in r.get("fps") or [] if isinstance(e, dict)]
     until = clock() + (FPS_WAIT if setting else 0)
+    applied: dict[int, float] = {}
+    fresh: set[int] = set()
     while True:
         states = [instances._read_status(Path(str(e.get("dir") or ""))) or {} for e in entries]
-        pending = [s for e, s in zip(entries, states) if s.get("isPlaying") and int(s.get("fpsCap") or 0) != int(e.get("cap") or 0)]
+        for i, (e, s) in enumerate(zip(entries, states)):
+            if not setting or not s.get("isPlaying") or int(s.get("fpsCap") or 0) != int(e.get("cap") or 0):
+                continue
+            written = _status_written(e)
+            if i not in applied:
+                applied[i] = written
+            elif written >= applied[i] + FPS_WINDOW:
+                fresh.add(i)
+        pending = [i for i, s in enumerate(states) if setting and s.get("isPlaying") and i not in fresh]
         if not pending or clock() >= until:
             break
         await asyncio.sleep(0.25)
     rows = []
-    for e, st in zip(entries, states):
+    for i, (e, st) in enumerate(zip(entries, states)):
         row = {"player": e.get("player"), "cap": int(e.get("cap") or 0) or None, "playing": bool(st.get("isPlaying"))}
         if row["playing"]:
             row["targetFrameRate"] = st.get("targetFrameRate")
             row["vSyncCount"] = st.get("vSyncCount")
             row["fps"] = (st.get("isStreaming") and st.get("streamActualFps")) or st.get("actualFps") or None
             row["setBy"] = st.get("fpsSource") or None
+            if setting and i not in fresh:
+                row["fps"] = None
+                row["note"] = "No frame rate measured under the new cap yet. Call unity.fps() again in a second or two."
         rows.append(row)
     return {"value": rows[0] if len(rows) == 1 else rows}
 
