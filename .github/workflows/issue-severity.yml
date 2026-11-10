@@ -1,0 +1,24 @@
+name: issue-severity
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          BODY: ${{ github.event.issue.body }}
+        run: |
+          severity=$(printf '%s\n' "$BODY" | tr -d '\r' | awk '/^### How bad is it\?/{f=1;next} f&&NF{print tolower($1);exit}' | tr -d ':')
+          case "$severity" in
+            critical|major|minor) gh issue edit "$NUMBER" --add-label "$severity" ;;
+          esac

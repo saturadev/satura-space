@@ -1,7 +1,6 @@
 name: Bug report
 description: Something in Satura Space is broken, crashing, or not behaving the way it should.
 title: "[Bug] "
-labels: ["bug"]
 body:
   - type: markdown
     attributes:
@@ -32,6 +31,18 @@ body:
       placeholder: |
         Launching a second Unity instance leaves the stream black, while the first one keeps rendering fine.
         I expected both instances to stream.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: How bad is it?
+      description: Pick the closest one. We may change it after triage.
+      options:
+        - "Critical: a crash, lost work, or a core feature unusable with no workaround"
+        - "Major: a main feature is broken or badly wrong, but there's a workaround"
+        - "Minor: a small or cosmetic problem, the app stays fully usable"
     validations:
       required: true
 

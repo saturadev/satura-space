@@ -1,7 +1,7 @@
-name: Feature request
+name: Suggestion
 description: Suggest something Satura Space should do, or something it does that could be better.
-title: "[Feature] "
-labels: ["enhancement"]
+title: "[Suggestion] "
+labels: ["suggestion"]
 body:
   - type: markdown
     attributes:
@@ -14,7 +14,7 @@ body:
     attributes:
       label: Before filing
       options:
-        - label: I searched the [existing requests](https://github.com/saturadev/satura-space/issues?q=is%3Aissue+label%3Aenhancement) and this isn't one of them.
+        - label: I searched the [existing suggestions](https://github.com/saturadev/satura-space/issues?q=is%3Aissue+label%3Asuggestion) and this isn't one of them.
           required: true
 
   - type: textarea
