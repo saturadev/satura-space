@@ -52,7 +52,7 @@ namespace Rollmates
             if (Taken) return false;
             Vector3 d = at - transform.position;
             d.y = 0f;
-            return d.sqrMagnitude <= reach * reach;
+            return d.sqrMagnitude <= Mathf.Max(reach, 1f) * Mathf.Max(reach, 1f);
         }
 
         public void Take()

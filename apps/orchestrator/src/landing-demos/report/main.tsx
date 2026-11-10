@@ -13,8 +13,11 @@ import healthPackSource from './hollowmere/HealthPack.cs.txt?raw'
 import './report.css'
 
 const ROOT = '/hollowmere'
-const FILE = `${ROOT}/.sspace/reports/health-pack-reach/report.tsx`
-const MEDIA: Record<string, string> = { [`${ROOT}/.sspace/videos/health-pack-reach.mp4`]: '/media/health-pack-run.mp4?v=1' }
+const FILE = `${ROOT}/.sspace/reports/health-pack-fix/report.tsx`
+const MEDIA: Record<string, string> = {
+  [`${ROOT}/.sspace/reports/health-pack-fix/health-pack-before.mp4`]: '/media/health-pack-before.mp4?v=1',
+  [`${ROOT}/.sspace/reports/health-pack-fix/health-pack-after.mp4`]: '/media/health-pack-after.mp4?v=1'
+}
 const CODE: Record<string, string> = { 'Assets/Rollmates/Scripts/HealthPack.cs': healthPackSource }
 
 const phone = window.innerWidth < 640
@@ -72,7 +75,10 @@ const bridge: ReportBridge = {
   codeRefs: (_f, _r, refs) =>
     Promise.resolve(
       Object.fromEntries(
-        refs.map((r): [string, CodeRefResolution] => [r, r in CODE ? { ref: r, status: 'ok', rel: r } : { ref: r, status: 'missing' }])
+        refs.map((r): [string, CodeRefResolution] => {
+          const rel = Object.keys(CODE).find((k) => k === r || k.endsWith(`/${r}`))
+          return [r, rel ? { ref: r, status: 'ok', rel } : { ref: r, status: 'missing' }]
+        })
       )
     ),
   readCode: (_f, _r, rel): Promise<CodeFileResult> =>
