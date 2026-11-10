@@ -521,6 +521,11 @@ public static partial class MCPTestBridge
     {
         SaturaGameClock.Unlock("staging run " + rec.run, "scenario ended");
         if (_stagingRecs.Count == 0) SaturaGameClock.FrameEnd -= StagingFrame;
+        if (rec.written == 1 && !rec.full)
+        {
+            try { WriteStagingFrame(rec); }
+            catch (Exception e) { Debug.LogWarning("[Staging] last frame for run " + rec.run + " failed: " + e.Message); }
+        }
         var s = new CamVideoSession { frame = rec.frame };
         s.rigs.Add(rec.rig);
         var err = CamVideoRelease(s);
