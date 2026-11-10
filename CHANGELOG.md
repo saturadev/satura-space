@@ -1,0 +1,31 @@
+# Changelog
+
+## 3.0.5 — 2026-11-11
+
+- **Open any folder from the phone** — Satura Remote browses and opens folders anywhere on the desktop, the same as the desktop app, not only inside the home folder and on external drives. The folder list has a Computer entry for the top of the disk.
+- **Multi-line phone composer** — the phone composer writes multi-line text, and Claude's input on the desktop grows with it.
+- **Phone stream stays smooth** — Scene and Game no longer drop to 5 fps on the phone after the desktop app has been running for hours: the Mac-side encoder kept two process clocks that drift apart. A still picture now goes out at about 35 fps instead of 5, and a frame rate you set lower yourself is kept.
+
+## 3.0.4 — 2026-11-10
+
+- **Phone terminal input** — paste fills the composer, multi-line sends use bracketed paste, and while a menu is open the phone shows arrow keys and Enter instead of option chips.
+- **Tuner** — drag to resize the staging panel; on Windows the editor stays fast while a Tuner is open.
+- **Reports** — staging runs report their length in game seconds, and the player bar keeps the frame counter and timecode whole in narrow players.
+- **Handles** — `ui.mouse` drives the window with real mouse and keyboard input.
+- 3.0.3 was never published; its changes are in 3.0.4.
+
+## 3.0.2 — 2026-11-10
+
+- **Windows terminals** — `conpty.dll` ships with the rebuilt node-pty, so terminals start on Windows.
+- **Phone tabs** — tabs light up on the open phone instead of sending notifications.
+- **Fixes** — hot reload reads the `SATURA_SPACE` define from `Assets/csc.rsp`, the frame rate readout is measured under the new cap, a scenario that fails on its first frame keeps its video, Drift brings the Unity Player tab forward before pointing at it, and a project that is not a git repository says so plainly.
+- **Handles** — `remote.controls` and `remote.gameInput` ship in release builds.
+- **Security** — minimatch is overridden to 11.0.1 (GHSA-g3hv-75wg-m249).
+
+## 3.0.1 — 2026-11-09
+
+- **Phone app check** — the desktop checks the phone app it serves against its GitHub build attestation, so the phone runs exactly what CI built from public `main`.
+
+## 3.0.0 — 2026-11-09
+
+- First open-source release.
