@@ -1369,7 +1369,9 @@ export function PhonePanels({ epoch }: { epoch: number }) {
         }
         void acked(req, async () => {
           await pasteImagePaths(getTerminalInstance(pty), paths, (data) => writePty(pty, data))
-          const typed = writePty(pty, String(text))
+          const body = String(text)
+          const bracketed = body.includes('\n') && getTerminalInstance(pty)?.modes.bracketedPasteMode
+          const typed = writePty(pty, bracketed ? `\x1b[200~${body.replace(/\r?\n/g, '\r')}\x1b[201~` : body)
           await new Promise((r) => setTimeout(r, 60))
           await Promise.all([typed, writePty(pty, '\r')])
         })

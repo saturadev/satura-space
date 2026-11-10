@@ -418,7 +418,8 @@ function pasteIntoTerminal(): void {
   readClipboard().then(
     (text) => {
       if (!text) return showToast('The clipboard is empty')
-      call('paste', text)
+      if (!addDraft(text)) return call('paste', text)
+      if (!useShell.getState().typing) startTyping()
     },
     () => showToast("The browser didn't share the clipboard. Long-press the text field and choose Paste.")
   )
@@ -515,6 +516,7 @@ function useOverlayBox(): InputBox | null {
 
 let draft = ''
 let sendNow = (): void => {}
+let addDraft = (_value: string): boolean => false
 
 function Composer({ landscape }: { landscape: boolean }) {
   const typing = useShell((s) => s.typing)
@@ -537,7 +539,10 @@ function Composer({ landscape }: { landscape: boolean }) {
       console.info(`[web-shell] composer moved to the ${landscape ? 'landscape' : 'portrait'} layout${draft ? ` with ${draft.length} chars` : ''}, ${kept ? 'still typing' : 'keyboard closed'}`)
       if (!kept) useShell.setState({ typing: false, ctrl: false })
     }
-    return () => setComposer(null)
+    return () => {
+      setComposer(null)
+      addDraft = () => false
+    }
   }, [])
   useLayoutEffect(() => {
     const el = ref.current
@@ -580,6 +585,16 @@ function Composer({ landscape }: { landscape: boolean }) {
     call('type', seq)
   }
   sendNow = send
+  addDraft = (value: string): boolean => {
+    const el = ref.current
+    if (!el) return false
+    const own = document.activeElement === el
+    const from = own ? el.selectionStart : draft.length
+    const to = own ? el.selectionEnd : draft.length
+    setText(draft.slice(0, from) + value + draft.slice(to))
+    console.info(`[web-shell] paste puts ${value.length} chars into the composer`)
+    return true
+  }
   return (
     <div
       className={place ? 'fixed z-[31]' : `overflow-hidden ${typing ? 'max-h-[140px]' : 'pointer-events-none max-h-0 opacity-0'}`}
@@ -690,7 +705,7 @@ function KeyBar({ panel }: { panel: Panel }) {
       {menu.length ? (
         <>
           <div ref={rail} className="ws-hscroll flex min-w-0 flex-1 items-center gap-1.5 py-0.5 pl-3 pr-3" data-ws-keyrail>
-            <KeyChip spec={{ name: 'esc', label: 'esc' }} />
+            <KeyChip spec={{ name: "esc", label: "esc" }} />
             {menu.map((o, i) => (
               <KeyChip key={o.key} wide={o.selected} spec={{ name: o.key, label: `${i + 1}  ${o.label}` }} />
             ))}
