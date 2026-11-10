@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path'
+import { basename, dirname, isAbsolute, join, parse, resolve } from 'node:path'
 import type { NewProjectArgs, NewProjectKind, NewProjectProgress, NewProjectResult } from '@shared/api'
 import type { PhoneProjectCreation, PhoneProjectDir, PhoneProjectsHome, PhoneProjectRow, PhoneProjectWorktree } from '@shared/remote-projects'
 import { loadState } from '../persistence'
@@ -48,22 +48,10 @@ function real(p: string): string {
   }
 }
 
-function roots(): string[] {
-  const out = [real(homedir())]
-  if (process.platform === 'darwin' && existsSync('/Volumes')) out.push('/Volumes')
-  return out
-}
-
-function inside(root: string, p: string): boolean {
-  return p === root || p.startsWith(root.endsWith(sep) ? root : root + sep)
-}
-
 function allowed(raw: unknown): string {
   const p = typeof raw === 'string' ? raw.trim() : ''
   if (!p || !isAbsolute(p)) throw new Error('That is not a folder on the desktop')
-  const r = real(p)
-  if (!roots().some((root) => inside(root, r))) throw new Error('The phone can only browse your home folder and external drives')
-  return r
+  return real(p)
 }
 
 function isDir(p: string): boolean {
@@ -115,6 +103,8 @@ async function home(): Promise<PhoneProjectsHome> {
   ] as const)
     if (p && isDir(p) && !places.some((x) => x.path === p)) places.push({ label, path: p })
   if (process.platform === 'darwin' && isDir('/Volumes')) places.push({ label: 'Drives', path: '/Volumes' })
+  const top = parse(h).root
+  if (top && !places.some((x) => x.path === top)) places.push({ label: 'Computer', path: top })
   const fallback = recents.find((r) => r.exists)?.path
   return { home: h, defaultFolder: defaultFolder || (fallback ? dirname(fallback) : places[1]?.path ?? h), places, recents }
 }
@@ -137,7 +127,7 @@ async function browse(raw: unknown): Promise<PhoneProjectDir> {
     .filter(isDir)
   const dot = (p: string): boolean => basename(p).startsWith('.')
   const entries = [...dirs.filter((p) => !dot(p)).sort(byName), ...dirs.filter(dot).sort(byName)]
-  const top = roots().some((r) => r === dir)
+  const top = dirname(dir) === dir
   return {
     dir,
     name: basename(dir) || dir,

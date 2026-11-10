@@ -281,7 +281,7 @@ export function OpenProjectScreen({ onClose }: { onClose: () => void }) {
           <Card>
             {home.places.map((p) => (
               <button key={p.path} type="button" onClick={() => setBrowse(p.path)} className="flex min-h-[48px] w-full items-center gap-3 px-4 text-left active:bg-white/[0.06]" data-ws-place={p.label}>
-                {p.label === 'Home' ? <House size={20} strokeWidth={2} className="text-[var(--ws-label2)]" /> : p.label === 'Drives' ? <HardDrive size={20} strokeWidth={2} className="text-[var(--ws-label2)]" /> : <Folder size={20} strokeWidth={2} className="text-[var(--ws-label2)]" />}
+                {p.label === 'Home' ? <House size={20} strokeWidth={2} className="text-[var(--ws-label2)]" /> : p.label === 'Drives' || p.label === 'Computer' ? <HardDrive size={20} strokeWidth={2} className="text-[var(--ws-label2)]" /> : <Folder size={20} strokeWidth={2} className="text-[var(--ws-label2)]" />}
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="text-[16px]">{p.label}</span>
                   <span className="truncate text-[12.5px] text-[var(--ws-label2)]">{shortPath(p.path, home.home)}</span>
