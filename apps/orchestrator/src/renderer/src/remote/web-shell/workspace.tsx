@@ -412,6 +412,15 @@ const NORMAL_KEYS: KeySpec[] = [
   { name: 'right', label: '→', mono: true }
 ]
 
+const MENU_KEYS: KeySpec[] = [
+  { name: 'esc', label: 'esc' },
+  { name: 'up', label: '↑', mono: true },
+  { name: 'down', label: '↓', mono: true },
+  { name: 'left', label: '←', mono: true },
+  { name: 'right', label: '→', mono: true },
+  { name: 'enter', label: 'enter' }
+]
+
 const GRID_KEY = 'h-11 w-full min-w-0 rounded-[14px]'
 
 function pasteIntoTerminal(): void {
@@ -705,10 +714,7 @@ function KeyBar({ panel }: { panel: Panel }) {
       {menu.length ? (
         <>
           <div ref={rail} className="ws-hscroll flex min-w-0 flex-1 items-center gap-1.5 py-0.5 pl-3 pr-3" data-ws-keyrail>
-            <KeyChip spec={{ name: "esc", label: "esc" }} />
-            {menu.map((o, i) => (
-              <KeyChip key={o.key} wide={o.selected} spec={{ name: o.key, label: `${i + 1}  ${o.label}` }} />
-            ))}
+            {MENU_KEYS.map((k) => <KeyChip key={k.name} spec={k} />)}
           </div>
           <div className="-ml-2 pr-3">
             <KeyboardToggle />
