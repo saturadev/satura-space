@@ -22,6 +22,8 @@ without building a player.
 
 ## Download
 
+This tool is still in alpha testing.
+
 Get the latest release from [GitHub Releases](https://github.com/saturadev/satura-space/releases/latest):
 macOS on Apple Silicon (`.dmg`) or Windows x64 (`.exe`). The app updates itself from the same page.
 
