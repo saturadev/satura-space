@@ -91,6 +91,7 @@
 }
 .sr-scope .srv-evnow[hidden] { display: none; }
 .sr-scope .srv-evnow > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sr-scope .srv-transport > :not(.srv-evnow):not(.sr-spacer):not(.srv-status) { flex-shrink: 0; }
 
 .sr-scope .srv-overview .got { position: absolute; left: 0; top: 12px; width: 0; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 22%, transparent); }
 .sr-player[data-decode='element'] .srv-overview .got { display: none; }
@@ -107,6 +108,10 @@
 @keyframes srv-pending {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
+}
+
+@container (max-width: 720px) {
+  .sr-scope .srv-evnow { display: none; }
 }
 
 @container (max-width: 520px) {
