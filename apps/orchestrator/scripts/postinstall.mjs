@@ -23,11 +23,28 @@ function installElectronBinary() {
   process.exit(r.status ?? 1)
 }
 
+function finishNodePtyWindowsBuild() {
+  const ptyDir = dirname(require.resolve('node-pty/package.json'))
+  console.log('[postinstall] node-pty post-install (conpty.dll)')
+  const r = spawnSync(process.execPath, [join(ptyDir, 'scripts', 'post-install.js')], {
+    cwd: ptyDir,
+    env,
+    stdio: 'inherit'
+  })
+  const dll = join(ptyDir, 'build', 'Release', 'conpty', 'conpty.dll')
+  if (r.status === 0 && existsSync(dll)) return
+  console.error(`[postinstall] FATAL: node-pty post-install did not produce ${dll}`)
+  process.exit(r.status || 1)
+}
+
 function rebuildNodePty() {
   const cli = join(dirname(require.resolve('@electron/rebuild')), 'cli.js')
   console.log('[postinstall] electron-rebuild node-pty')
   const r = spawnSync(process.execPath, [cli, '-f', '-w', 'node-pty'], { cwd: root, env, stdio: 'inherit' })
-  if (r.status === 0) return
+  if (r.status === 0) {
+    if (process.platform === 'win32') finishNodePtyWindowsBuild()
+    return
+  }
   if (process.platform === 'win32') {
     console.warn(
       '[postinstall] node-pty Electron rebuild failed; falling back to its shipped N-API prebuild ' +
