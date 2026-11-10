@@ -217,9 +217,8 @@ export function phonePushInvoke(phoneId: string, ch: string, args: unknown[]): u
   return undefined
 }
 
-function shown(live: PushLive | null, where: PushWhere | null | undefined): boolean {
-  if (!live || !where || !live.visible || live.stale) return false
-  return live.workspaceId === where.workspaceId && (where.tabId === null || live.tabId === where.tabId)
+function open(live: PushLive | null): boolean {
+  return !!live && live.visible && !live.stale
 }
 
 function fit(p: StoredPush, note: PushNote): Buffer {
@@ -260,8 +259,8 @@ export function notify(out: OutNote): { sent: number; records: PushRecord[] } {
       skip(`${out.cat} turned off on the phone`)
       continue
     }
-    if (shown(host.live(p.phoneId), out.where)) {
-      skip('the phone shows it right now')
+    if (out.cat !== 'test' && open(host.live(p.phoneId))) {
+      skip('Satura Remote is open on the phone, so its tab lights up there instead')
       continue
     }
     const key = `${p.phoneId}|${out.tag}`

@@ -203,6 +203,7 @@ function useEdgeFade(ref: RefObject<HTMLElement | null>, deps: unknown[]): void 
 
 function ChipView({ c, selected, outlined }: { c: Chip; selected: boolean; outlined: boolean }) {
   const pending = useShell((s) => !!s.pending[`tab:${c.id}`])
+  const lit = !!c.attn && !selected
   return (
     <button
       type="button"
@@ -210,11 +211,13 @@ function ChipView({ c, selected, outlined }: { c: Chip; selected: boolean; outli
       aria-pressed={selected}
       className={`ws-press relative flex h-[26px] shrink-0 items-center gap-[7px] rounded-full pl-2 pr-2.5 text-[12px] font-semibold ${selected ? 'bg-[var(--ws-ink)] text-[#0f0f12]' : 'ws-glass text-[var(--ws-ink)]'} ${pending ? 'remote-pending' : ''}`}
       data-ws-chip={c.id}
+      data-ws-attn={lit ? '' : undefined}
     >
       {c.dot ? <StatusDot dot={c.dot} /> : <Sym name={CHIP_ICON[c.kind] ?? 'circle'} size={13} stroke={2.4} />}
       <span className="whitespace-nowrap">{c.label}</span>
       {c.badge && <span className="flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#ff9f0a] px-1 text-[11px] font-bold text-black">{c.badge}</span>}
-      {outlined && <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_0_0_1px_rgb(255_255_255/0.32)]" />}
+      {outlined && !lit && <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_0_0_1px_rgb(255_255_255/0.32)]" />}
+      {lit && <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_0_0_1.5px_var(--ws-accent),0_0_10px_-2px_var(--ws-accent)]" />}
     </button>
   )
 }
@@ -230,28 +233,87 @@ function Chips({ ws }: { ws: Workspace }) {
     el?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
   }, [selected])
   useEdgeFade(ref, [])
+  const hidden = useHiddenAttn(ref)
+  const reveal = (side: 'l' | 'r'): void => {
+    const el = ref.current
+    if (!el) return
+    const box = el.getBoundingClientRect()
+    const lit = [...el.querySelectorAll<HTMLElement>('[data-ws-attn]')].filter((c) => (side === 'l' ? c.getBoundingClientRect().left < box.left : c.getBoundingClientRect().right > box.right))
+    const chip = side === 'l' ? lit[lit.length - 1] : lit[0]
+    chip?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
+  }
+  const glow = (side: 'l' | 'r'): ReactNode => (
+    <button
+      type="button"
+      aria-label={side === 'l' ? 'News in a tab to the left' : 'News in a tab to the right'}
+      onClick={() => reveal(side)}
+      className={`absolute inset-y-0 z-[1] w-[22px] ${side === 'l' ? 'left-0' : 'right-0'}`}
+      style={{ background: `linear-gradient(to ${side === 'l' ? 'right' : 'left'}, color-mix(in srgb, var(--ws-accent) 42%, transparent), transparent)` }}
+      data-ws-attn-edge={side}
+    />
+  )
   return (
-    <div ref={ref} className="ws-hscroll flex items-center gap-1.5 px-2.5 py-0.5" data-ws-chips>
-      {groups.map((g, gi) => (
-        <div key={g.id || gi} className="contents">
-          {gi > 0 && <span aria-hidden className="mx-1 h-[22px] w-px shrink-0 bg-white/[0.16]" />}
-          {many && (
-            <span className={`flex shrink-0 items-center gap-[3px] pr-0.5 ${g.focused ? 'text-[var(--ws-accent)]' : 'text-[var(--ws-label3)]'}`} aria-label={`Group ${gi + 1}`}>
-              <Sym name="rectangle.split.2x1" size={11} stroke={2.6} />
-              <span className="text-[11px] font-bold" style={{ fontFamily: 'ui-rounded, -apple-system, system-ui, sans-serif' }}>
-                {gi + 1}
+    <div className="relative">
+      {hidden.l && glow('l')}
+      {hidden.r && glow('r')}
+      <div ref={ref} className="ws-hscroll flex items-center gap-1.5 px-2.5 py-0.5" data-ws-chips>
+        {groups.map((g, gi) => (
+          <div key={g.id || gi} className="contents">
+            {gi > 0 && <span aria-hidden className="mx-1 h-[22px] w-px shrink-0 bg-white/[0.16]" />}
+            {many && (
+              <span className={`flex shrink-0 items-center gap-[3px] pr-0.5 ${g.focused ? 'text-[var(--ws-accent)]' : 'text-[var(--ws-label3)]'}`} aria-label={`Group ${gi + 1}`}>
+                <Sym name="rectangle.split.2x1" size={11} stroke={2.6} />
+                <span className="text-[11px] font-bold" style={{ fontFamily: 'ui-rounded, -apple-system, system-ui, sans-serif' }}>
+                  {gi + 1}
+                </span>
               </span>
-            </span>
-          )}
-          {ws.tabs
-            .filter((c) => !many || c.group === g.id)
-            .map((c) => (
-              <ChipView key={c.id} c={c} selected={c.id === selected} outlined={many && c.groupActive && c.id !== selected} />
-            ))}
-        </div>
-      ))}
+            )}
+            {ws.tabs
+              .filter((c) => !many || c.group === g.id)
+              .map((c) => (
+                <ChipView key={c.id} c={c} selected={c.id === selected} outlined={many && c.groupActive && c.id !== selected} />
+              ))}
+          </div>
+        ))}
+      </div>
     </div>
   )
+}
+
+function useHiddenAttn(ref: RefObject<HTMLElement | null>): { l: boolean; r: boolean } {
+  const [hidden, setHidden] = useState({ l: false, r: false })
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const update = (): void => {
+      const box = el.getBoundingClientRect()
+      let l = false
+      let r = false
+      for (const c of el.querySelectorAll<HTMLElement>('[data-ws-attn]')) {
+        const at = c.getBoundingClientRect()
+        const mid = (at.left + at.right) / 2
+        if (mid < box.left + 12) l = true
+        if (mid > box.right - 12) r = true
+      }
+      setHidden((was) => {
+        if (was.l === l && was.r === r) return was
+        console.info(`[web-shell] tabs with news off screen: ${l ? 'left' : ''}${l && r ? ' and ' : ''}${r ? 'right' : ''}${l || r ? '' : 'none'}`)
+        return { l, r }
+      })
+    }
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    const mo = new MutationObserver(update)
+    mo.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-ws-attn'] })
+    return () => {
+      el.removeEventListener('scroll', update)
+      ro.disconnect()
+      mo.disconnect()
+    }
+  }, [])
+  return hidden
 }
 
 function FilterBar({ section }: { section: WireAction }) {

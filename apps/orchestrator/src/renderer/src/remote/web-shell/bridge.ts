@@ -28,6 +28,7 @@ export interface Chip {
   badge: string | null
   group: string
   groupActive: boolean
+  attn?: boolean
 }
 
 export interface ChipGroup {

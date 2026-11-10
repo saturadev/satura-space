@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type { Tab, TabContentType } from '@shared/types'
 import type { ActivityEntry } from '@shared/remote-push'
@@ -434,6 +434,40 @@ function useProjectsFeed(): void {
 
 const ASK_OPTIONS: MenuOption[] = [{ key: '1', label: 'Yes', selected: true }, { key: 'esc', label: 'No', selected: false }]
 
+let feedNow: ActivityEntry[] = []
+let feedBaselined = false
+const feedSubs = new Set<() => void>()
+const seenTabAt = new Map<string, number>()
+
+function latestByTab(feed: ActivityEntry[], workspaceId?: string): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const e of feed) {
+    const tabId = e.link.tabId
+    if (!tabId || (workspaceId && e.link.workspaceId && e.link.workspaceId !== workspaceId)) continue
+    out.set(tabId, Math.max(out.get(tabId) ?? 0, e.at))
+  }
+  return out
+}
+
+function setFeedNow(list: ActivityEntry[], loaded: boolean): void {
+  feedNow = list
+  if (loaded && !feedBaselined) {
+    feedBaselined = true
+    for (const [tabId, at] of latestByTab(list)) seenTabAt.set(tabId, Math.max(seenTabAt.get(tabId) ?? 0, at))
+  }
+  for (const fn of feedSubs) fn()
+}
+
+function useFeedNow(): ActivityEntry[] {
+  return useSyncExternalStore(
+    (fn) => {
+      feedSubs.add(fn)
+      return () => feedSubs.delete(fn)
+    },
+    () => feedNow
+  )
+}
+
 function useActivityFeed(): void {
   const [feed, setFeed] = useState<ActivityEntry[]>([])
   const menuVersion = useMenuVersion()
@@ -441,11 +475,16 @@ function useActivityFeed(): void {
     const load = (): void => {
       void invokeRemote<ActivityEntry[]>('remote:push:activity').then((list) => {
         console.info(`[shell] activity from the desktop: ${list.length} entries, ${list.filter((e) => e.open).length} open`)
+        setFeedNow(list, true)
         setFeed(list)
       }, () => {})
     }
     load()
-    const offFeed = wsTransport.on('remote:activity', (list: ActivityEntry[]) => setFeed(Array.isArray(list) ? list : []))
+    const offFeed = wsTransport.on('remote:activity', (list: ActivityEntry[]) => {
+      const next = Array.isArray(list) ? list : []
+      setFeedNow(next, false)
+      setFeed(next)
+    })
     const offOnline = wsTransport.on('remote:online', load)
     return () => {
       offFeed()
@@ -1021,6 +1060,18 @@ function PhoneWorkspace({ id, epoch }: { id: string; epoch: number }) {
     if (kind && !onLayout) logActionTree(kind, menus.panel)
   }, [kind, menus, onLayout])
   const scan = sel && kind === 'terminal' ? menuByPty.get(sel.ptyId) : undefined
+  const feed = useFeedNow()
+  const latest = useMemo(() => latestByTab(feed, id), [feed, id])
+  const shownId = onLayout ? null : sel?.id ?? null
+  if (shownId) seenTabAt.set(shownId, Math.max(seenTabAt.get(shownId) ?? 0, latest.get(shownId) ?? 0))
+  const attn = [...latest].filter(([tabId, at]) => tabId !== shownId && at > (seenTabAt.get(tabId) ?? 0)).map(([tabId]) => tabId).sort().join(',')
+  const chips = useMemo(() => {
+    const lit = new Set(attn.split(','))
+    return (JSON.parse(view.chips) as { id: string }[]).map((c) => (lit.has(c.id) ? { ...c, attn: true } : c))
+  }, [view.chips, attn])
+  useEffect(() => {
+    if (attn) console.info(`[shell] tabs with news: ${attn}`)
+  }, [attn])
   const title = sel && !onLayout ? view.selLabel : ws ? workspaceTitle(ws) : ''
   const subtitle = !sel || onLayout
     ? ''
@@ -1039,7 +1090,7 @@ function PhoneWorkspace({ id, epoch }: { id: string; epoch: number }) {
         subtitle,
         project: ws ? workspaceTitle(ws) : '',
         root: (worktrees ?? [])[0]?.path ?? ws?.worktreePath ?? ws?.folderPath ?? '',
-        tabs: JSON.parse(view.chips),
+        tabs: chips,
         groups: JSON.parse(view.groups),
         selected: onLayout ? null : sel?.id ?? null,
         restore,
@@ -1063,7 +1114,7 @@ function PhoneWorkspace({ id, epoch }: { id: string; epoch: number }) {
             }
           : null
       }),
-      [id, title, subtitle, ws, worktrees, view.chips, view.groups, sel, kind, view.status, scan, canBack, backTitles, menus, menuVersion, onLayout, held, restore?.title, restore?.tabId]
+      [id, title, subtitle, ws, worktrees, chips, view.groups, sel, kind, view.status, scan, canBack, backTitles, menus, menuVersion, onLayout, held, restore?.title, restore?.tabId]
     )
   )
 
