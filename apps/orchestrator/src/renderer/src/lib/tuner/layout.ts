@@ -3,9 +3,10 @@ export interface TunerLayout {
   viewport: number
   hierarchy: number
   timeline: number
+  staging: number
 }
 
-export const DEFAULT_TUNER_LAYOUT: TunerLayout = { sidebar: 380, viewport: 0.52, hierarchy: 0.34, timeline: 0 }
+export const DEFAULT_TUNER_LAYOUT: TunerLayout = { sidebar: 380, viewport: 0.52, hierarchy: 0.34, timeline: 0, staging: 0 }
 
 export const SIDEBAR_MIN = 240
 export const VIEWPORT_MIN_W = 240
@@ -38,7 +39,8 @@ export function sanitizeLayout(raw: unknown): TunerLayout {
     sidebar: finite(o.sidebar, 120, 4000, d.sidebar),
     viewport: finite(o.viewport, 0.05, 0.95, d.viewport),
     hierarchy: finite(o.hierarchy, 0.05, 0.95, d.hierarchy),
-    timeline: o.timeline === 0 ? 0 : finite(o.timeline, 40, 4000, d.timeline)
+    timeline: o.timeline === 0 ? 0 : finite(o.timeline, 40, 4000, d.timeline),
+    staging: o.staging === 0 ? 0 : finite(o.staging, 120, 4000, d.staging)
   }
 }
 

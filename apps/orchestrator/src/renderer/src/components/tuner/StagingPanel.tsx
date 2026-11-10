@@ -6,6 +6,7 @@ import { Fullscreen } from '../report/Fullscreen'
 import '../report/report-kit.css'
 import { StagingReport } from './StagingReport'
 import { useToolbarMenu } from './useToolbarMenu'
+import { zoomOf } from '../../lib/css-zoom'
 import { UnityStagingPrefabIcon } from './unity-icons'
 
 const iconBtn = 'flex h-5 w-5 shrink-0 items-center justify-center rounded text-ink-2 transition-colors hover:bg-white/10 hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent'
@@ -14,6 +15,7 @@ const stopBtn = 'flex h-5 w-5 shrink-0 items-center justify-center rounded bg-am
 const SOURCE = /(Assets\/[^\s:()]+\.cs):(\d+)/
 const REPORT_EVERY_MS = 400
 const memory: { showPath: boolean; picked: string | null } = { showPath: true, picked: null }
+const PANEL_MIN = 180
 
 function sceneName(path: string): string {
   return path.slice(path.lastIndexOf('/') + 1).replace(/\.unity$/i, '')
@@ -336,7 +338,9 @@ export function StagingPanel({
   onScene,
   onTrails,
   fetchReport,
-  onClose
+  onClose,
+  height = 0,
+  onHeight
 }: {
   staging: TunerStaging | null
   onRun: (path: string, item: string) => void
@@ -347,6 +351,8 @@ export function StagingPanel({
   onTrails: (trails: StagingTrail[] | null) => void
   fetchReport: (path: string) => Promise<TunerStagingReport | null>
   onClose: () => void
+  height?: number
+  onHeight?: (px: number, final: boolean) => void
 }) {
   const [picked, setPickedState] = useState<string | null>(memory.picked)
   const setPicked = useCallback((path: string) => {
@@ -354,6 +360,36 @@ export function StagingPanel({
     setPickedState(path)
   }, [])
   const [expanded, setExpanded] = useState(false)
+  const [resizing, setResizing] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const onResizeDown = (e: React.PointerEvent<HTMLDivElement>): void => {
+    if (e.button !== 0 || !panelRef.current) return
+    e.preventDefault()
+    e.stopPropagation()
+    const handle = e.currentTarget
+    handle.setPointerCapture(e.pointerId)
+    const panel = panelRef.current
+    const y0 = e.clientY
+    const zk = zoomOf(handle)
+    const h0 = panel.getBoundingClientRect().height / zk
+    const most = Math.max(PANEL_MIN, (panel.parentElement?.clientHeight ?? h0) - 48)
+    let last = Math.round(h0)
+    setResizing(true)
+    const move = (m: PointerEvent): void => {
+      last = Math.round(Math.max(PANEL_MIN, Math.min(most, h0 + (y0 - m.clientY) / zk)))
+      onHeight?.(last, false)
+    }
+    const up = (): void => {
+      handle.removeEventListener('pointermove', move)
+      handle.removeEventListener('pointerup', up)
+      handle.removeEventListener('pointercancel', up)
+      setResizing(false)
+      onHeight?.(last, true)
+    }
+    handle.addEventListener('pointermove', move)
+    handle.addEventListener('pointerup', up)
+    handle.addEventListener('pointercancel', up)
+  }
   const [showPath, setShowPathState] = useState(memory.showPath)
   const items = staging?.items ?? []
   const all = items.flatMap((item) => item.scenarios.map((sc) => ({ item, sc })))
@@ -380,8 +416,24 @@ export function StagingPanel({
       data-staging-open-scene={staging?.scenePath ?? ''}
       data-staging-scenes={staging?.scenes.join('\n') ?? ''}
       data-staging-expanded={expanded ? 'yes' : 'no'}
-      className={`surface-overlay pointer-events-auto relative mx-2 mb-2 mt-1.5 flex shrink-0 flex-col rounded-lg text-[11px] text-ink-2 ${items.length > 0 ? 'h-[45%] min-h-[180px]' : 'max-h-[45%]'}`}
+      data-staging-height={items.length > 0 && height > 0 ? height : ''}
+      ref={panelRef}
+      className={`surface-overlay pointer-events-auto relative mx-2 mb-2 mt-1.5 flex shrink-0 flex-col rounded-lg text-[11px] text-ink-2 ${items.length > 0 ? (height > 0 ? 'max-h-[calc(100%-48px)] min-h-[180px]' : 'h-[45%] min-h-[180px]') : 'max-h-[45%]'}`}
+      style={items.length > 0 && height > 0 ? { height } : undefined}
     >
+      {items.length > 0 && onHeight && (
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          data-staging-resize
+          data-ti-tip="Drag to resize the staging panel. Double-click to reset."
+          onPointerDown={onResizeDown}
+          onDoubleClick={() => onHeight(0, true)}
+          className="group absolute -top-1 left-3 right-3 z-20 h-2 cursor-row-resize"
+        >
+          <div className={`mx-auto mt-[3px] h-[3px] w-10 rounded-full transition-colors ${resizing ? 'bg-accent' : 'bg-ink-3/40 group-hover:bg-accent'}`} />
+        </div>
+      )}
       <div className="flex h-[30px] shrink-0 items-center gap-1 border-b border-hairline px-1.5">
         <span className="shrink-0 font-medium text-ink">Staging</span>
         {staging && <SceneSwitch staging={staging} onScene={onScene} />}

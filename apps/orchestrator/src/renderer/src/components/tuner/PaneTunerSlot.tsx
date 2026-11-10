@@ -2450,6 +2450,15 @@ export function PaneTunerSlot({
         onTrails={setStagingTrails}
         fetchReport={fetchStagingReport}
         onClose={() => setStagingOpen(false)}
+        height={phone ? 0 : layout.staging}
+        onHeight={
+          phone
+            ? undefined
+            : (h, final) => {
+                setLayout({ staging: h })
+                if (final) setTimeout(persistLayout, 0)
+              }
+        }
       />
     ) : null
 
