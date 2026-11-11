@@ -19,9 +19,10 @@ export default defineConfig({
       { find: /^katex\/dist\/katex\.min\.css$/, replacement: resolve(root, 'empty.css') },
       { find: '@renderer', replacement: resolve(__dirname, 'src/renderer/src') },
       { find: '@shared', replacement: resolve(__dirname, 'src/shared') },
-      { find: /^@satura\/report$/, replacement: resolve(root, 'report/kit.ts') }
+      { find: /^@satura\/report$/, replacement: resolve(root, 'report/kit.ts') },
+      { find: /^@satura\/plugin$/, replacement: resolve(__dirname, 'src/renderer/src/plugins/api.tsx') }
     ],
-    dedupe: ['react', 'react-dom']
+    dedupe: ['react', 'react-dom', 'lucide-react']
   },
   plugins: [react(), tailwindcss()],
   worker: { format: 'es' },
