@@ -16,7 +16,7 @@ says). There's no CLA and no sign-off line to add.
 | `apps/orchestrator` | The desktop app (Electron, React). Launches, streams and drives Unity editors. |
 | `packages/saturaspace-engine` | Unity package the app embeds into each project, out of git and player builds: the stream server, the editor bridge, C# hot reload, and the game API (`SaturaHandle`, `SaturaLog`, staging prefabs). |
 | `packages/mcp` | Python MCP server. Agents use its one tool, `satura_exec`, to drive Unity and the app. |
-| `packages/companion-app` | Satura Remote, the phone companion (early access): the relay and the phone site. |
+| `packages/companion-app` | Satura Remote, the phone companion: the relay and the phone site. |
 | `tools/` | Build helpers for the vendored engine libraries. |
 
 ## Build and run from source
