@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.1.0 — 2026-11-12
+
+- **Plugins** — a plugin is one folder in `plugins/` and ships inside the release: app handles, functions the agent calls from `satura_exec`, a panel in the New session menu, C# that goes into the project's editor, and a page of the agent guide. How to write one is in `CONTRIBUTING.md`.
+- **Free Assets** — the first plugin. Search CC0 models, materials and HDRIs from Poly Haven and ambientCG in a panel, or let the agent call `assets.search` and `assets.import`. Each import gets materials built for the project's render pipeline (URP or Built-in), a prefab that sits on the ground, an optional skybox, and a credit line in `Assets/ThirdParty/CREDITS.md`.
+
 ## 3.0.5 — 2026-11-11
 
 - **Open any folder from the phone** — Satura Remote browses and opens folders anywhere on the desktop, the same as the desktop app, not only inside the home folder and on external drives. The folder list has a Computer entry for the top of the disk.
