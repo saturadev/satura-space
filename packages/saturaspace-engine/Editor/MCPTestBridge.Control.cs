@@ -280,6 +280,12 @@ public static partial class MCPTestBridge
             return;
         }
 
+        if (env.cmd != null && env.cmd.StartsWith("plugin/", StringComparison.Ordinal))
+        {
+            SaturaPlugins.Run(env.id, env.cmd.Substring(7), line, json => CtrlReply(from, json));
+            return;
+        }
+
         switch (env.cmd)
         {
             case "ping":

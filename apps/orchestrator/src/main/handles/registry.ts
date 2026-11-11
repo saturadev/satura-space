@@ -235,7 +235,8 @@ export async function listHandles(filter: string, ctx: CallCtx): Promise<HandleI
     ...(h.long ? { long: true } : {}),
     ...(h.agentOnly ? { agentOnly: true } : {})
   }))
-  const all = app.isPackaged ? main : [...main, ...(await rendererList(ctx))]
+  const theirs = await rendererList(ctx)
+  const all = [...main, ...(app.isPackaged ? theirs.filter((h) => h.released) : theirs)]
   return all.filter((h) => handleMatches(h, filter)).sort((a, b) => a.name.localeCompare(b.name))
 }
 
@@ -244,10 +245,12 @@ export async function callHandle(name: string, rawParams: unknown, ctx: CallCtx,
   const cursor = logCursor(ctx.window)
   const fail = (error: string): HandleResult => ({ handle: name, status: 'error', error, logs: callLogs(cursor), ms: Date.now() - started, mark: currentMark(ctx.window) })
   const handle = handles.get(name)
-  if (app.isPackaged && !handle?.released) return fail(`${name} exists only in dev builds. app.handles() lists the ones this build has.`)
+  const devOnly = `${name} exists only in dev builds. app.handles() lists the ones this build has.`
+  if (app.isPackaged && handle && !handle.released) return fail(devOnly)
   if (!handle) {
     const theirs = (await rendererList(ctx)).find((h) => h.name === name)
-    if (!theirs) return fail(`There is no handle ${name}. app.handles() lists them.`)
+    if (theirs && app.isPackaged && !theirs.released) return fail(devOnly)
+    if (!theirs) return fail(app.isPackaged ? devOnly : `There is no handle ${name}. app.handles() lists them.`)
     if (theirs.agentOnly && ctx.origin === 'report') return fail(`${name} ${AGENT_ONLY}`)
     try {
       const value = await rendererHandle(ctx, name, withDefaults(theirs.params, rawParams))

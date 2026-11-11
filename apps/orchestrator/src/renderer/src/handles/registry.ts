@@ -13,13 +13,14 @@ export interface RendererHandle {
   side: 'renderer'
   params: HandleParams
   agentOnly?: boolean
+  released?: boolean
   run(params: HandleParams, ctx: RendererCtx): unknown
 }
 
 const handles = new Map<string, RendererHandle>()
 
 export function defineHandle(handle: RendererHandle): RendererHandle {
-  if (import.meta.env.DEV) handles.set(handle.name, handle)
+  if (import.meta.env.DEV || handle.released) handles.set(handle.name, handle)
   return handle
 }
 
@@ -38,7 +39,7 @@ export function workspaceByPath(s: AppState, root: string): string | null {
 }
 
 export function rendererHandleList(): HandleInfo[] {
-  return [...handles.values()].map((h) => ({ name: h.name, description: h.description, side: 'renderer', params: h.params, ...(h.agentOnly ? { agentOnly: true } : {}) }))
+  return [...handles.values()].map((h) => ({ name: h.name, description: h.description, side: 'renderer', params: h.params, ...(h.agentOnly ? { agentOnly: true } : {}), ...(h.released ? { released: true } : {}) }))
 }
 
 export async function runRendererHandle(call: RendererHandleCall): Promise<RendererHandleReply> {

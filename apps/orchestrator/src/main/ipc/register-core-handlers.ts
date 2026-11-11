@@ -30,6 +30,7 @@ import { registerUsageHandlers } from './usage'
 import { registerAuthHandlers } from './auth'
 import { registerClaudeSessionHandlers } from './claude-sessions'
 import { registerDashboardHandlers } from '../dashboard'
+import { registerPluginHandlers } from '../plugins'
 
 export function registerCoreHandlers(): void {
   registerAuthHandlers()
@@ -58,6 +59,7 @@ export function registerCoreHandlers(): void {
   registerScratchpadHandlers()
   registerAgentHandlers()
   registerAgentExecHandlers()
+  registerPluginHandlers()
   registerSaturaExec()
   registerDashboardHandlers()
   registerShellHandlers()

@@ -9,6 +9,7 @@ import { openReportsPicker } from '../../components/report/ReportsPicker'
 import { openDashboard } from '../dashboard/open-dashboard'
 import { agentHasModelEffort } from '../../components/AgentModelEffort'
 import { IS_PRIMARY_WINDOW } from '../window-role'
+import { pluginPanels } from '../../plugins'
 import { section, type ActionNode } from './action-tree'
 
 export type AgentLaunchTarget = 'split' | 'panel'
@@ -97,6 +98,17 @@ export function newSessionModel(s: AppState, ctx: NewSessionContext) {
     else openDashboard({ projectPath: targetPath, workspaceId, groupId })
     onClose()
   }
+  const plugins = pluginPanels().map((panel) => {
+    const found = tabs.find((t) => t.contentType === 'plugin' && t.plugin === panel.key && !!targetPath && pathByWorktreeId.get(t.worktreeId) === targetPath)
+    const enabled = !!targetPath && (!!found || !panel.unityOnly || isUnityProject === true)
+    const open = (): void => {
+      if (!targetWorktreeId || !enabled) return
+      if (found) s.activateTab(found.id)
+      else s.openTabBeside(workspaceId, groupId, targetWorktreeId, { label: panel.title, contentType: 'plugin', plugin: panel.key })
+      onClose()
+    }
+    return { panel, existing: !!found, enabled, open }
+  })
   const openTuner = (): void => {
     if (!targetWorktreeId || isUnityProject !== true) return
     const sceneTuner = tabs.find((t) => t.contentType === 'tuner' && t.worktreeId === targetWorktreeId && isSceneTuner(t.tuner))
@@ -132,7 +144,8 @@ export function newSessionModel(s: AppState, ctx: NewSessionContext) {
     openScratchpads,
     openReports,
     openDashboardPanel,
-    openTuner
+    openTuner,
+    plugins
   }
 }
 
@@ -198,6 +211,10 @@ export function newSessionNodes(s: AppState, m: NewSessionModel, isUnityProject:
             { id: 'open-scratchpads', label: m.existingScratchpadTab ? 'Show Scratchpads' : 'Open Scratchpads', icon: 'square.grid.2x2', enabled: !!m.existingScratchpadTab || isUnityProject === true, run: m.openScratchpads }
           ]
         : []
+    ),
+    section(
+      'plugins',
+      m.plugins.map((row) => ({ id: `open-plugin:${row.panel.key}`, label: row.existing ? `Show ${row.panel.title}` : row.panel.title, icon: row.panel.symbol ?? 'shippingbox', enabled: row.enabled, run: row.open }))
     ),
     section('git', [
       { id: 'open-reports', label: 'Reports…', icon: 'doc.richtext', enabled: !!m.targetPath, run: m.openReports },

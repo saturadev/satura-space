@@ -66,7 +66,7 @@ import { RestorePromptCard } from './restore-card'
 const PhoneGit = lazy(() => import('./git/PhoneGit').then((m) => ({ default: m.PhoneGit })))
 
 type Dot = 'work' | 'wait' | 'ok' | 'err' | 'off'
-type PanelKind = 'terminal' | 'console' | 'git' | 'viewer' | 'scratchpads' | 'unity' | 'tuner' | 'dashboard' | 'layout'
+type PanelKind = 'terminal' | 'console' | 'git' | 'viewer' | 'scratchpads' | 'unity' | 'tuner' | 'dashboard' | 'layout' | 'plugin'
 
 const KIND_OF: Record<TabContentType, PanelKind> = {
   terminal: 'terminal',
@@ -76,7 +76,8 @@ const KIND_OF: Record<TabContentType, PanelKind> = {
   tuner: 'tuner',
   'unity-scratchpad': 'scratchpads',
   'git-scm': 'git',
-  dashboard: 'dashboard'
+  dashboard: 'dashboard',
+  plugin: 'plugin'
 }
 
 const STATUS_DOT: Record<AgentRunStatus, Dot> = { working: 'work', 'needs-input': 'wait', idle: 'ok' }

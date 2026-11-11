@@ -61,6 +61,7 @@ import { unityLogTailers } from './unity-log-tailer'
 import { classifyHotReloadLine, STARTED_SUPPRESS_MS } from './hot-reload-log'
 import { withMonoInlineDisabled } from './mono-env'
 import { syncTreeIncremental } from './engine-sync'
+import { enginePluginKeep, syncEnginePlugins } from '../plugins/engine'
 import { EDITOR_QUIT_TIMINGS, describeQuit, quitEditor } from './editor-quit'
 import { ProjectStops } from './project-stops'
 import { SURFACE_PACKET, parseSurfacePacket, presentSurface, releaseHeld, resendSurface, launchWithHook, assignToKillJob, setJobKillOnClose } from './shared-surface'
@@ -152,10 +153,11 @@ function leftUntouched(path: string, error: string, what: string): void {
 }
 async function syncEngineInPlace(src: string, dest: string): Promise<boolean> {
   try {
-    const r = await syncTreeIncremental(src, dest, [ENGINE_STAMP_FILE])
-    const changed = [...r.copied, ...r.removed]
+    const r = await syncTreeIncremental(src, dest, [ENGINE_STAMP_FILE, ...enginePluginKeep()])
+    const plugins = await syncEnginePlugins(src, dest)
+    const changed = [...r.copied, ...r.removed, ...plugins]
     console.log(
-      `[unity] engine ${ENGINE_PKG_NAME} in-place sync → ${dest}: ${changed.length ? `${r.copied.length} updated, ${r.removed.length} removed (${changed.slice(0, 6).join(', ')}${changed.length > 6 ? ', …' : ''})` : 'unchanged'}`
+      `[unity] engine ${ENGINE_PKG_NAME} in-place sync → ${dest}: ${changed.length ? `${r.copied.length + plugins.length} updated, ${r.removed.length} removed (${changed.slice(0, 6).join(', ')}${changed.length > 6 ? ', …' : ''})` : 'unchanged'}`
     )
     return true
   } catch (e) {
@@ -3662,6 +3664,7 @@ class UnityInstanceProvider {
         if (!inPlace) {
           try {
             await cp(src, staging, { recursive: true })
+            await syncEnginePlugins(src, staging)
             writeEngineStamp(staging, wantId)
             if (existsSync(dest)) await renameWithRetry(dest, retired)
             try {
@@ -3676,6 +3679,7 @@ class UnityInstanceProvider {
             await rm(staging, { recursive: true, force: true }).catch(() => {})
             if (!existsSync(dest)) {
               await cp(src, dest, { recursive: true })
+              await syncEnginePlugins(src, dest)
               writeEngineStamp(dest, wantId)
               console.log(`[unity] restored engine ${ENGINE_PKG_NAME} ${wantId} → ${dest} (swap failed: ${(swapErr as Error).message})`)
             } else if (haveId === wantId) {
@@ -3685,6 +3689,7 @@ class UnityInstanceProvider {
                 filter: (s) =>
                   !(/\.(dll|dylib|so|pdb)$/i.test(s) && existsSync(join(dest, relative(src, s))))
               })
+              await syncEnginePlugins(src, dest)
               console.log(`[unity] overlay-synced engine ${ENGINE_PKG_NAME} ${wantId} → ${dest} (swap blocked: ${(swapErr as Error).message})`)
             } else {
               console.error(`[unity] engine swap ${haveId ?? 'none'} → ${wantId} blocked, will retry next launch: ${(swapErr as Error).message}`)

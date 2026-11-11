@@ -6,8 +6,9 @@ import { removeLeaf, shownTab } from '../lib/tab-tree'
 import { GIT_TAB_LABEL } from '../lib/tab-label'
 import { defineHandle, workspaceByPath, type RendererCtx } from './registry'
 import { sceneTunerTab } from '../lib/tuner/tuner-target'
+import { pluginPanel, pluginPanels } from '../plugins'
 
-const KINDS: Record<string, { type: TabContentType; label?: string; single: boolean }> = {
+const KINDS: Record<string, { type: TabContentType; label?: string; single: boolean; plugin?: string }> = {
   terminal: { type: 'terminal', single: false },
   unity: { type: 'unity-instance-player', label: 'Unity Player', single: true },
   console: { type: 'unity-console', label: 'Unity Console', single: true },
@@ -49,6 +50,7 @@ export function tabInfo(s: AppState, tab: Tab): Record<string, unknown> {
     exited: s.exitedPtyIds.includes(tab.ptyId),
     shown: !!group && !group.hidden && (!full || full === group.id) && shownTab(group, all)?.id === tab.id,
     ...(tab.tuner ? { tuner: tab.tuner } : {}),
+    ...(tab.plugin ? { plugin: tab.plugin } : {}),
     ...(s.viewerFileByTab[tab.id] ? { file: s.viewerFileByTab[tab.id] } : {})
   }
 }
@@ -115,13 +117,14 @@ defineHandle({
   name: 'layout.open',
   side: 'renderer',
   description:
-    "Opens a panel the way the New session menu does. kind is terminal, unity, console, git, tuner, scratchpads or dashboard; unity, console, git, scratchpads and dashboard reuse an open tab of that kind, and tuner reuses the open scene Tuner whatever its target (the project or a scratchpad), since there is only one. folder opens or creates a workspace for that folder first; otherwise it uses the project workspace. dock is beside (a new split next to the active group), tab (a tab in the active group) or right (a split docked right at share of the width). Returns the tab, whether it was reused, the workspace id and the pane model.",
+    "Opens a panel the way the New session menu does. kind is terminal, unity, console, git, tuner, scratchpads, dashboard or a plugin panel such as assets; unity, console, git, scratchpads and dashboard reuse an open tab of that kind, and tuner reuses the open scene Tuner whatever its target (the project or a scratchpad), since there is only one. folder opens or creates a workspace for that folder first; otherwise it uses the project workspace. dock is beside (a new split next to the active group), tab (a tab in the active group) or right (a split docked right at share of the width). Returns the tab, whether it was reused, the workspace id and the pane model.",
   params: { kind: 'terminal', folder: '', dock: 'beside', share: 0.4 },
   async run(p, ctx: RendererCtx) {
     if (/^(files?|explorer|file-hierarchy)$/i.test(String(p.kind)))
       throw new Error(`There's no ${String(p.kind)} panel. The file explorer is part of the sidebar, and layout.dock { sidebar: true } opens it.`)
-    const kind = KINDS[String(p.kind)]
-    if (!kind) throw new Error(`Unknown kind ${String(p.kind)}. Use ${Object.keys(KINDS).join(', ')}.`)
+    const panel = pluginPanel(String(p.kind))
+    const kind = KINDS[String(p.kind)] ?? (panel ? { type: 'plugin' as const, label: panel.title, single: true, plugin: panel.key } : undefined)
+    if (!kind) throw new Error(`Unknown kind ${String(p.kind)}. Use ${[...Object.keys(KINDS), ...pluginPanels().map((x) => x.key)].join(', ')}.`)
     let s = useAppStore.getState()
     const folder = String(p.folder ?? '').trim()
     const ws = folder ? (workspaceByPath(s, folder) ?? s.createWorkspace(undefined, folder, folder)) : ctx.workspaceId
@@ -133,7 +136,7 @@ defineHandle({
     const worktreeId = (worktrees.find((w) => w.path.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase() === want) ?? worktrees[0])?.id
     if (!worktreeId) throw new Error('The workspace has no folder to open the panel for.')
     const existing = kind.single
-      ? (s.tabsByWorkspace[ws] ?? []).find((t) => t.contentType === kind.type && t.worktreeId === worktreeId)
+      ? (s.tabsByWorkspace[ws] ?? []).find((t) => t.contentType === kind.type && t.worktreeId === worktreeId && (t.plugin ?? undefined) === kind.plugin)
       : kind.type === 'tuner'
         ? sceneTunerTab(s.tabsByWorkspace[ws] ?? [], worktreeId, undefined, s.groupsByWorkspace[ws] ?? []) ?? undefined
         : undefined
@@ -143,7 +146,7 @@ defineHandle({
       tab = existing
     } else {
       const group = s.activeGroupIdByWorkspace[ws] ?? s.ensureWorkbench(ws)
-      const opts = { contentType: kind.type, ...(kind.label ? { label: kind.label } : {}) }
+      const opts = { contentType: kind.type, ...(kind.label ? { label: kind.label } : {}), ...(kind.plugin ? { plugin: kind.plugin } : {}) }
       tab = p.dock === 'tab' ? s.createTab(ws, worktreeId, { ...opts, groupId: group }) : s.openTabBeside(ws, group, worktreeId, opts)
     }
     if (p.dock === 'right') dockRight(ws, tab.groupId, clampShare(p.share, 0.4))

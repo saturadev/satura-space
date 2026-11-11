@@ -8,7 +8,8 @@ const KNOWN_TAB_TYPES: Record<TabContentType, true> = {
   tuner: true,
   'unity-scratchpad': true,
   'git-scm': true,
-  dashboard: true
+  dashboard: true,
+  plugin: true
 }
 
 export function isKnownTabType(type: string): type is TabContentType {

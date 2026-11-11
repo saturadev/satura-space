@@ -13,7 +13,8 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["src/shared/*"]
+      "@shared/*": ["src/shared/*"],
+      "@satura/plugin": ["src/main/plugins/api.ts"]
     }
   },
   "include": [
@@ -23,7 +24,8 @@
     "electron.vite.config.ts",
     "vite-iife-plugin.ts",
     "vite.report-export.config.ts",
-    "vite.remote.config.ts"
+    "vite.remote.config.ts",
+    "../../plugins/*/main.ts"
   ],
   "exclude": ["src/main/satura-exec/page", "src/main/satura-exec/playwright/injected"]
 }

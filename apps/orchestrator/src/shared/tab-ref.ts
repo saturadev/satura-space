@@ -20,7 +20,8 @@ export const TAB_KIND: Record<TabContentType, string> = {
   tuner: 'tuner',
   'unity-scratchpad': 'scratchpads',
   'git-scm': 'git',
-  dashboard: 'dashboard'
+  dashboard: 'dashboard',
+  plugin: 'plugin'
 }
 
 const KIND_WORDS: Record<string, string> = {

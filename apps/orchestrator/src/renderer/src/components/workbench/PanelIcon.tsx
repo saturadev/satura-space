@@ -26,6 +26,7 @@ import { useTunerTabTitle } from '../../lib/tuner/tab-titles'
 import { UnityPrefabIcon, UnityPrefabVariantIcon, UnitySceneIcon, UnityStagingPrefabIcon } from '../tuner/unity-icons'
 import { useAppStore } from '../../store'
 import { hasUndelivered, useDashboardAlerts } from '../../lib/dashboard/alerts-store'
+import { pluginPanel } from '../../plugins'
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|avif|bmp|tga|psd|svg|ico|exr|hdr)$/i
 const TEXT_EXT = /\.(md|markdown|txt|rst)$/i
@@ -75,6 +76,10 @@ export function panelKind(tab: Tab, file?: string): Kind {
       return PANEL_KIND.git
     case 'dashboard':
       return PANEL_KIND.dashboard
+    case 'plugin': {
+      const panel = pluginPanel(tab.plugin)
+      return panel ? { icon: panel.icon, name: panel.title } : PANEL_KIND.code
+    }
     case 'file-viewer': {
       const f = file ?? ''
       if (!f) return PANEL_KIND.code

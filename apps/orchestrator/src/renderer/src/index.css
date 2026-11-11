@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'katex/dist/katex.min.css';
 @import './assets/markdown.css';
+@source '../../../../../plugins';
 
 *:focus-visible {
   outline: none !important;

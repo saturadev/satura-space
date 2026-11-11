@@ -16,13 +16,18 @@
     "paths": {
       "@renderer/*": ["src/renderer/src/*"],
       "@shared/*": ["src/shared/*"],
-      "@satura/report": ["src/shared/report-kit.d.ts"]
+      "@satura/report": ["src/shared/report-kit.d.ts"],
+      "@satura/plugin": ["src/renderer/src/plugins/api.tsx"],
+      "react": ["node_modules/@types/react"],
+      "react/*": ["node_modules/@types/react/*"],
+      "lucide-react": ["node_modules/lucide-react"]
     }
   },
   "include": [
     "src/renderer/src",
     "src/shared",
     "src/main/satura-exec/page",
-    "src/main/satura-exec/playwright/injected"
+    "src/main/satura-exec/playwright/injected",
+    "../../plugins/*/renderer.tsx"
   ]
 }

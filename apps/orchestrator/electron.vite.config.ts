@@ -1,12 +1,13 @@
 import { resolve } from 'node:path'
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
-import { build as viteBuild, type Plugin } from 'vite'
+import { build as viteBuild, searchForWorkspaceRoot, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { iifePlugin } from './vite-iife-plugin'
 
 const shared = resolve(__dirname, 'src/shared')
+const plugins = resolve(__dirname, '../../plugins')
 const reactTypes = realpathSync(resolve(__dirname, 'node_modules/@types/react'))
 const tsLib = resolve(realpathSync(resolve(__dirname, 'node_modules/typescript')), 'lib')
 const reportTypes = { '@react-types': reactTypes, '@csstype': resolve(reactTypes, '../../csstype'), '@ts-lib': tsLib }
@@ -58,7 +59,7 @@ function devRemoteWeb(): Plugin {
 export default defineConfig({
   main: builds('main') ? {
     plugins: [externalizeDepsPlugin(), iifePlugin(__dirname), devRemoteWeb()],
-    resolve: { alias: { '@shared': shared, ...reportTypes } },
+    resolve: { alias: { '@shared': shared, '@satura/plugin': resolve(__dirname, 'src/main/plugins/api.ts'), ...reportTypes } },
     build: {
       rollupOptions: {
         onwarn(warning, warn) {
@@ -90,13 +91,14 @@ export default defineConfig({
     }
   } : undefined,
   renderer: builds('renderer') ? {
-    server: { port: Number(process.env.SATURA_DEV_RENDERER_PORT) || 5273, strictPort: true, hmr: false, ws: false, watch: null },
+    server: { port: Number(process.env.SATURA_DEV_RENDERER_PORT) || 5273, strictPort: true, hmr: false, ws: false, watch: null, fs: { allow: [searchForWorkspaceRoot(__dirname), plugins] } },
     resolve: {
       alias: {
         '@renderer': resolve(__dirname, 'src/renderer/src'),
-        '@shared': shared
+        '@shared': shared,
+        '@satura/plugin': resolve(__dirname, 'src/renderer/src/plugins/api.tsx')
       },
-      dedupe: ['react', 'react-dom']
+      dedupe: ['react', 'react-dom', 'lucide-react']
     },
     optimizeDeps: { entries: ['index.html', 'src/**/*.{ts,tsx}', '!src/**/*.d.ts', '!src/report-frame/**'] },
     build: { minify: 'esbuild' },

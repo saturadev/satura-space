@@ -31,6 +31,7 @@ import { loadState } from '../persistence'
 import { WindowDriver } from './driver'
 import { consoleLog, installLogCapture, mainLog, type LogQuery } from './logs'
 import { createRunner, type CallerInfo } from './runner'
+import { callPluginExec, pluginGlobals } from '../plugins'
 import { driftSpotlightOf } from './spotlight-setting'
 import { workerHost } from './sandbox/worker-host'
 import { censusTrack } from '@shared/census'
@@ -494,6 +495,8 @@ export function registerSaturaExec(): void {
     runEnded: (run) => releaseRun(run),
     unityMode: (args, projectRoot) => unityModeCall(args, projectRoot),
     unity: (args, projectRoot, signal) => unityLifecycleCall(args, projectRoot, signal),
+    plugins: pluginGlobals,
+    plugin: (args, ctx) => callPluginExec(String(args.plugin ?? ''), String(args.fn ?? ''), Array.isArray(args.args) ? args.args : [], ctx),
     requireGraphics,
     log: (line) => debugLog(`[satura-exec] ${line}`),
     now: Date.now,

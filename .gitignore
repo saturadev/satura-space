@@ -18,6 +18,7 @@ apps/orchestrator/resources/mcp/satura-space-mcp.exe
 
 *.meta
 !packages/saturaspace-engine/**/*.meta
+!plugins/*/unity/**/*.meta
 
 *.obj
 *.lib

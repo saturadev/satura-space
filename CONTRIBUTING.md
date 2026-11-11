@@ -17,6 +17,7 @@ says). There's no CLA and no sign-off line to add.
 | `packages/saturaspace-engine` | Unity package the app embeds into each project, out of git and player builds: the stream server, the editor bridge, C# hot reload, and the game API (`SaturaHandle`, `SaturaLog`, staging prefabs). |
 | `packages/mcp` | Python MCP server. Agents use its one tool, `satura_exec`, to drive Unity and the app. |
 | `packages/companion-app` | Satura Remote, the phone companion: the relay and the phone site. |
+| `plugins` | In-repo plugins that ship inside the release, one folder each (see [Plugins](#plugins)). |
 | `tools/` | Build helpers for the vendored engine libraries. |
 
 ## Build and run from source
@@ -75,6 +76,42 @@ node scripts/satura.mjs --instance alt handle unity.ready
 
 Call `unity.ready` first and read `value` and `logs` after every call. If a handle you need is
 missing, add one in `src/main/handles` or `src/renderer/src/handles`.
+
+## Plugins
+
+A plugin is one folder in `plugins/` and ships inside the release. Nothing is installed at runtime
+and there is no list to edit: the app finds the folders when it is built.
+
+```
+plugins/<name>/
+  plugin.json    { "name", "title", "description" }
+  main.ts        default export (p) => void, runs in the Electron main process
+  renderer.tsx   default export (p) => void, runs in the window
+  unity/         C# with its own asmdef, copied into the embedded engine as Plugins/<name>/
+  agent.md       a page of the agent guide
+```
+
+Every file but `plugin.json` is optional. `<name>` is lowercase letters and digits. Plugin code
+imports only `@satura/plugin` (a main and a window entry point), Node built-ins in `main.ts`, and
+React and lucide icons in `renderer.tsx`.
+
+- In `main.ts`, `p.handle({ name, description, params, run })` adds the app handle `<name>.<handle>`,
+  kept in packaged builds. `p.exec(fn, (ctx, ...args) => ...)` adds `<name>.<fn>()` to the agent's
+  `satura_exec`. `p.unity(projectRoot, command, args)` runs a command the plugin's C# registered with
+  `SaturaPlugins.Command("<name>.<command>", json => resultJson)` in the project's editor.
+  `p.emit(event, data)` reaches the window, and `p.cacheDir` is the plugin's own cache folder.
+- In `renderer.tsx`, `p.panel({ id, title, icon, component })` adds a panel to the New session
+  menu, `p.handle(...)` adds a window handle, `p.call(handle, projectRoot, params)` runs one of the
+  plugin's main handles and `p.on(event, cb)` hears `p.emit`.
+- `unity/` follows the engine's rules: editor code in an Editor-only asmdef, and the `.meta` files
+  committed so GUIDs stay stable.
+- `agent.md` becomes `Documentation~/agent-guide/<name>.md` in the project, with a row in the
+  guide's plugin table.
+
+Check a plugin like any change: on a dev instance, through its handles
+(`node scripts/satura.mjs --instance alt handle <name>.<handle>`) and an `exec` script that uses its
+globals. Changes to `unity/` reach the editor after a dev app relaunch and project reopen, like the
+engine's.
 
 ## Checks
 

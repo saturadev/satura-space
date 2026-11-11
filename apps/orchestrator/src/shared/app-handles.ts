@@ -9,6 +9,7 @@ export interface HandleInfo {
   params: HandleParams
   long?: boolean
   agentOnly?: boolean
+  released?: boolean
 }
 
 export interface HandleResult {

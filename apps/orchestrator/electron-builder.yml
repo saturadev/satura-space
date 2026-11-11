@@ -87,6 +87,12 @@ extraResources:
       - '**/*'
       - '!.native'
       - '!.native/**'
+  - from: ../../plugins
+    to: plugins
+    filter:
+      - '*/plugin.json'
+      - '*/agent.md'
+      - '*/unity/**'
   - from: ../../LICENSE
     to: LICENSE
   - from: ../../NOTICE

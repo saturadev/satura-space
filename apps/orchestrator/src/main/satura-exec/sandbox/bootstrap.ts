@@ -46,7 +46,7 @@ const rpc: Rpc = (method, params) => {
 
 type WindowInfo = { id: number; title: string; focused: boolean; visible: boolean; caller: boolean }
 
-const startup = JSON.parse(String(g.__saturaInit ?? '{}')) as { windows?: WindowInfo[]; drift?: boolean }
+const startup = JSON.parse(String(g.__saturaInit ?? '{}')) as { windows?: WindowInfo[]; drift?: boolean; plugins?: Record<string, string[]> }
 const driftOn = startup.drift !== false
 let windowRows: WindowInfo[] = Array.isArray(startup.windows) ? startup.windows : []
 
@@ -900,6 +900,12 @@ const api: Record<string, unknown> = {
 
 for (const [name, value] of Object.entries(api)) {
   Object.defineProperty(g, name, { value, writable: false, configurable: false, enumerable: true })
+}
+
+for (const [name, fns] of Object.entries(startup.plugins && typeof startup.plugins === 'object' ? startup.plugins : {})) {
+  if (name in g || !Array.isArray(fns)) continue
+  const calls = Object.fromEntries(fns.map((fn) => [String(fn), (...args: unknown[]) => rpc('plugin', { plugin: name, fn: String(fn), args })]))
+  Object.defineProperty(g, name, { value: Object.freeze(calls), writable: false, configurable: false, enumerable: true })
 }
 g.__saturaDeliver = settle
 g.__saturaStart = start

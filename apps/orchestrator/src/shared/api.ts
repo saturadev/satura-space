@@ -502,6 +502,7 @@ export interface MovedPanelTab {
   blameEnabled?: boolean
   tuner?: TunerTarget | null
   scratchpadId?: string | null
+  plugin?: string | null
 }
 
 export interface MovedPanel {
@@ -1016,6 +1017,10 @@ export interface PreloadApi {
     onSignal: (cb: (msg: RvSignal) => void) => () => void
   }
   dashboard: DashboardApi
+  plugins: {
+    call: (plugin: string, handle: string, projectRoot: string, params: Record<string, unknown>) => Promise<{ ok: true; value: unknown } | { ok: false; error: string }>
+    onEvent: (cb: (plugin: string, event: string, data: unknown) => void) => () => void
+  }
 }
 
 declare global {

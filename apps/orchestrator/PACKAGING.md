@@ -33,6 +33,7 @@ On a dev Mac with a signing identity in the keychain, electron-builder signs eve
 | shared-surface addon (`native/shared-surface`) | `npm run build:native`, run by postinstall | IOSurface on macOS, D3D11 on Windows; needs the Xcode or VS C++ toolset |
 | Unity shared-surface plugin (`SaturaSharedSurface.bundle` / `.dll`) | `packages/saturaspace-engine/.native/sharedsurface/build.sh`, `build-win.ps1` | the bundle is committed, the Windows DLL is built on Windows |
 | engine package | none | copied from `packages/saturaspace-engine` |
+| plugin Unity code and guides (`resources/plugins/`) | none | `plugin.json`, `agent.md` and `unity/` of each `plugins/<name>`; the app copies `unity/` into the embedded engine as `Plugins/<name>/`. Plugin main and window code is in the app bundle |
 
 **Anything `fork()`ed with `ELECTRON_RUN_AS_NODE` bypasses asar**, so its entry and every module it
 requires must be in `asarUnpack`: `out/main/daemon-entry.js`, `out/main/chunks/**`,

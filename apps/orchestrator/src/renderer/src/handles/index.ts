@@ -17,6 +17,7 @@ import './report'
 import './ui'
 import './claude'
 import './fn'
+import '../plugins'
 
 export { rendererHandleList, runRendererHandle } from './registry'
 

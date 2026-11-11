@@ -126,9 +126,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@renderer': resolve(__dirname, 'src/renderer/src'),
-      '@shared': resolve(__dirname, 'src/shared')
+      '@shared': resolve(__dirname, 'src/shared'),
+      '@satura/plugin': resolve(__dirname, 'src/renderer/src/plugins/api.tsx')
     },
-    dedupe: ['react', 'react-dom']
+    dedupe: ['react', 'react-dom', 'lucide-react']
   },
   plugins: [react(), tailwindcss(), mediaWorker(), phoneSite(), reportFrame()],
   build: {

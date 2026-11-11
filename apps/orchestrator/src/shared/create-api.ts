@@ -729,7 +729,11 @@ export function createApi(t: IpcTransport, p: ApiPlatform): PreloadApi {
       signal: (msg) => t.send('rvideo:signal', msg),
       onSignal: (cb) => t.on('rvideo:signal', (msg: RvSignal) => cb(msg))
     },
-    dashboard: createDashboardApi(t)
+    dashboard: createDashboardApi(t),
+    plugins: {
+      call: (plugin, handle, projectRoot, params) => t.invoke('plugin:call', plugin, handle, projectRoot, params),
+      onEvent: (cb) => t.on('plugin:event', (plugin: string, event: string, data: unknown) => cb(plugin, event, data))
+    }
   }
   return api
 }

@@ -91,6 +91,8 @@ interface RunnerDeps {
   runEnded?(run: number): void
   unityMode?(args: Record<string, unknown>, projectRoot: string): Promise<unknown>
   unity?(args: Record<string, unknown>, projectRoot: string, signal: AbortSignal): Promise<unknown>
+  plugins?(): Record<string, string[]>
+  plugin?(args: Record<string, unknown>, ctx: { window: number | null; projectRoot: string; signal: AbortSignal }): Promise<unknown>
   requireGraphics?(call: string, path: string): void
   log(line: string): void
   now(): number
@@ -423,6 +425,23 @@ export function createRunner(deps: RunnerDeps): { run: (req: SaturaExecRequest, 
             inflight.delete(key)
           }
         }
+        case 'plugin': {
+          if (!deps.plugin) throw new Error('Plugins are not available here.')
+          const label = `${String(params.plugin ?? '')}.${String(params.fn ?? '')}`
+          const t0 = deps.now()
+          const key = ++nextCall
+          inflight.set(key, { label, t0 })
+          try {
+            const value = await deps.plugin(params, { window: caller.window, projectRoot, signal: abort.signal })
+            if (steps.length < 200) steps.push({ label, ok: true, ms: deps.now() - t0 })
+            return value
+          } catch (e) {
+            if (steps.length < 200) steps.push({ label, ok: false, ms: deps.now() - t0 })
+            throw e
+          } finally {
+            inflight.delete(key)
+          }
+        }
         case 'mcp': {
           const fn = String(params.fn ?? '')
           const label = typeof params.label === 'string' && params.label ? params.label.slice(0, 120) : fn
@@ -463,7 +482,7 @@ export function createRunner(deps: RunnerDeps): { run: (req: SaturaExecRequest, 
     deps.log(`run ${runId}: start, window ${caller.window ?? 'none'}, workspace ${caller.workspace || 'none'}, limit ${timeoutMs / 1000}s, drift ${drift ? 'on' : 'off'}`)
     const windowRows = (): string => JSON.stringify(deps.windows().map((w) => ({ ...w, caller: w.id === caller.window })))
     let sentWindows = windowRows()
-    const host = deps.spawnHost(req.code, JSON.stringify({ windows: JSON.parse(sentWindows), drift }))
+    const host = deps.spawnHost(req.code, JSON.stringify({ windows: JSON.parse(sentWindows), drift, plugins: deps.plugins?.() ?? {} }))
     const outcome = await new Promise<{ result?: string; failure?: ScriptFailure }>((resolve) => {
       let settled = false
       let timer: ReturnType<typeof setTimeout> | undefined

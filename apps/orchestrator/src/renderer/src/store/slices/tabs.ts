@@ -62,6 +62,7 @@ export interface TabsSlice {
       claudeSessionId?: string | null
       tuner?: TunerTarget | null
       scratchpadId?: string | null
+      plugin?: string | null
     }
   ) => Tab
   openTabBeside: (
@@ -76,6 +77,7 @@ export interface TabsSlice {
       claudeSessionId?: string | null
       tuner?: TunerTarget | null
       scratchpadId?: string | null
+      plugin?: string | null
     }
   ) => Tab
   openTabSplit: (
@@ -294,6 +296,7 @@ export const createTabsSlice: StateCreator<AppState, [], [], TabsSlice> = (set, 
       ...(opts?.claudeSessionId ? { claudeSessionId: opts.claudeSessionId } : {}),
       ...(opts?.tuner ? { tuner: opts.tuner } : {}),
       ...(opts?.scratchpadId ? { scratchpadId: opts.scratchpadId } : {}),
+      ...(opts?.plugin ? { plugin: opts.plugin } : {}),
       preview: opts?.preview ?? false,
       sortOrder: count,
       createdAt: Date.now()
@@ -948,6 +951,7 @@ export const createTabsSlice: StateCreator<AppState, [], [], TabsSlice> = (set, 
       parentPtyId: t.parentPtyId ?? null,
       tuner: t.tuner ?? null,
       scratchpadId: t.scratchpadId ?? null,
+      plugin: t.plugin ?? null,
       sortOrder: i + 1,
       createdAt: now
     }))

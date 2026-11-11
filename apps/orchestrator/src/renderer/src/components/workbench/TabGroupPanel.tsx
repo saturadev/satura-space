@@ -17,6 +17,7 @@ import { PaneErrorBoundary } from './PaneErrorBoundary'
 import { shownTab } from '../../lib/tab-tree'
 import { IS_MAC } from '../../lib/shortcuts/shortcuts'
 import { pickPath } from '../../lib/file-picker/file-picker-store'
+import { pluginPanel } from '../../plugins'
 
 const PANEL_RADIUS = 6
 const WINDOW_CORNER_RADIUS = IS_MAC ? 10 : 8
@@ -35,6 +36,7 @@ interface TabGroupPaneProps {
   tabId: string
   projectPath: string
   scratchpadId: string | null
+  plugin: string | null
   focused: boolean
 }
 
@@ -44,6 +46,7 @@ function TabGroupPaneContent({
   tabId,
   projectPath,
   scratchpadId,
+  plugin,
   focused
 }: TabGroupPaneProps) {
   if (contentType === 'unity-instance-player') {
@@ -71,6 +74,11 @@ function TabGroupPaneContent({
   }
   if (contentType === 'dashboard') {
     return <PaneDashboardSlot tabId={tabId} projectPath={projectPath} />
+  }
+  if (contentType === 'plugin') {
+    const Panel = pluginPanel(plugin)?.component
+    if (!Panel) return <div className="flex h-full items-center justify-center text-sm text-zinc-500">This panel's plugin is not in this build.</div>
+    return <Panel projectPath={projectPath} tabId={tabId} focused={focused} />
   }
   return <PaneTerminalSlot ptyId={ptyId} />
 }
@@ -190,6 +198,7 @@ export const TabGroupPanel = memo(function TabGroupPanel({
             tabId={activeTab.id}
             projectPath={worktrees.find((w) => w.id === activeTab.worktreeId)?.path ?? ''}
             scratchpadId={activeTab.scratchpadId ?? null}
+            plugin={activeTab.plugin ?? null}
             focused={isGroupActive}
           />
         ) : (

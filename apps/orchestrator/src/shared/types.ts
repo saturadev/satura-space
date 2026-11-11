@@ -112,6 +112,7 @@ export type TabContentType =
   | 'unity-scratchpad'
   | 'git-scm'
   | 'dashboard'
+  | 'plugin'
 
 export interface TunerTarget {
   kind: 'view' | 'file'
@@ -133,6 +134,7 @@ export interface Tab {
   parentPtyId?: string | null
   tuner?: TunerTarget | null
   scratchpadId?: string | null
+  plugin?: string | null
   attachedTo?: string | null
   reportGroup?: ReportGroupPrefs | null
 

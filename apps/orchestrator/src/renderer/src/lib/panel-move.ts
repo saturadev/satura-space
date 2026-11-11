@@ -52,7 +52,8 @@ export async function moveTabToWindow(
         draft: viewerFile ? (st.draftsByPath[viewerFile] ?? null) : null,
         blameEnabled: viewerFile ? !!st.blameEnabledByPath[viewerFile] : false,
         tuner: tab.tuner ?? null,
-        scratchpadId: tab.scratchpadId ?? null
+        scratchpadId: tab.scratchpadId ?? null,
+        plugin: tab.plugin ?? null
       }
     ]
   }
