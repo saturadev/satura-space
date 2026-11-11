@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, ChevronDown } from 'lucide-react'
 import { useDismiss } from './useDismiss'
 import { useFloating } from '../../lib/floating'
@@ -50,10 +51,11 @@ export function Select<T extends string>({
         />
       </button>
 
-      {open && (
+      {open && createPortal(
         <div
           ref={listRef}
-          className="animate-menu-pop-in surface-overlay fixed left-0 top-0 z-50 max-h-60 overflow-y-auto rounded-lg py-1"
+          data-menu-layer
+          className="animate-menu-pop-in surface-overlay fixed left-0 top-0 z-[70] max-h-60 overflow-y-auto rounded-lg py-1"
         >
           {options.map((o) => {
             const active = o.value === value
@@ -75,7 +77,8 @@ export function Select<T extends string>({
               </button>
             )
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
