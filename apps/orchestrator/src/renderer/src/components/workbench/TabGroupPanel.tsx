@@ -18,6 +18,8 @@ import { shownTab } from '../../lib/tab-tree'
 import { IS_MAC } from '../../lib/shortcuts/shortcuts'
 import { pickPath } from '../../lib/file-picker/file-picker-store'
 import { pluginPanel } from '../../plugins'
+import { ProjectPluginPanel } from '../../plugins/project'
+import { projectPluginOfKey } from '@shared/project-plugins'
 
 const PANEL_RADIUS = 6
 const WINDOW_CORNER_RADIUS = IS_MAC ? 10 : 8
@@ -76,9 +78,16 @@ function TabGroupPaneContent({
     return <PaneDashboardSlot tabId={tabId} projectPath={projectPath} />
   }
   if (contentType === 'plugin') {
-    const Panel = pluginPanel(plugin)?.component
-    if (!Panel) return <div className="flex h-full items-center justify-center text-sm text-zinc-500">This panel's plugin is not in this build.</div>
-    return <Panel projectPath={projectPath} tabId={tabId} focused={focused} />
+    const own = projectPluginOfKey(plugin)
+    if (own) return <ProjectPluginPanel key={own} tabId={tabId} projectPath={projectPath} name={own} />
+    const found = pluginPanel(plugin)
+    const Panel = found?.component
+    if (!found || !Panel) return <div className="flex h-full items-center justify-center text-sm text-zinc-500">This panel's plugin is not in this build.</div>
+    return (
+      <div className="relative h-full w-full" data-plugin-panel={found.plugin} data-plugin-title={found.title} data-plugin-settled="">
+        <Panel projectPath={projectPath} tabId={tabId} focused={focused} />
+      </div>
+    )
   }
   return <PaneTerminalSlot ptyId={ptyId} />
 }

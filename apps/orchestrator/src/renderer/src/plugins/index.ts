@@ -1,6 +1,7 @@
 import { useAppStore } from '../store'
 import { defineHandle, workspaceByPath } from '../handles/registry'
 import { debugLog } from '@shared/debug-log'
+import { projectPluginKey } from '@shared/project-plugins'
 import type { PanelDef, PluginManifest, RendererPlugin, RendererPluginSetup } from './api'
 
 export interface PluginPanel extends PanelDef {
@@ -33,9 +34,9 @@ export function pluginPanel(key: string | null | undefined): PluginPanel | null 
   return (key && panels.get(key)) || null
 }
 
-export function openPluginPanel(key: string, projectRoot: string): { tabId: string; reused: boolean } | null {
-  const panel = panels.get(key)
-  if (!panel) return null
+export function openPluginPanel(key: string, projectRoot: string, title?: string): { tabId: string; reused: boolean } | null {
+  const label = panels.get(key)?.title ?? title
+  if (!label) return null
   const s = useAppStore.getState()
   const ws = workspaceByPath(s, projectRoot) ?? s.activeWorkspaceId
   if (!ws) return null
@@ -49,7 +50,9 @@ export function openPluginPanel(key: string, projectRoot: string): { tabId: stri
     return { tabId: existing.id, reused: true }
   }
   const group = s.activeGroupIdByWorkspace[ws] ?? s.ensureWorkbench(ws)
-  const tab = useAppStore.getState().openTabBeside(ws, group, wt.id, { label: panel.title, contentType: 'plugin', plugin: key })
+  const full = s.fullscreenGroupIdByWorkspace[ws]
+  if (full && full !== group) s.exitFullscreen(ws)
+  const tab = useAppStore.getState().openTabBeside(ws, group, wt.id, { label, contentType: 'plugin', plugin: key })
   debugLog(`[plugin] opened ${key} for ${wt.path}`)
   return { tabId: tab.id, reused: false }
 }
@@ -81,6 +84,25 @@ function pluginFor(name: string, manifest: PluginManifest): RendererPlugin {
     }
   }
 }
+
+defineHandle({
+  name: 'plugins.open',
+  side: 'renderer',
+  released: true,
+  description:
+    "Opens a plugin's panel the way Plugins in the New session menu does: a built-in plugin (name: assets) or a project plugin from .sspace/plugins/<name>/ (title is its tab label). project is the folder, default the call's project. Reuses an open tab of that panel. Returns the panel key, the tab id and whether it was reused. satura_exec plugins.open() calls this after compiling the panel.",
+  params: { name: '', project: '', title: '' },
+  run(p, ctx) {
+    const name = String(p.name ?? '').trim()
+    const project = String(p.project ?? '').trim() || ctx.projectRoot
+    if (!name) throw new Error('Pass the plugin name.')
+    const builtIn = [...panels.values()].find((x) => x.plugin === name)
+    const key = builtIn && !p.title ? builtIn.key : projectPluginKey(name)
+    const opened = openPluginPanel(key, project, String(p.title ?? '').trim() || name)
+    if (!opened) throw new Error(`No workspace has ${project || 'this project'} open, so there is nowhere to show the panel.`)
+    return { key, ...opened }
+  }
+})
 
 for (const [key, setup] of Object.entries(setups)) {
   const name = folderOf(key)

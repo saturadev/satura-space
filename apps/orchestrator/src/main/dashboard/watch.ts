@@ -1,5 +1,6 @@
 import { watch, type FSWatcher } from 'node:fs'
 import { dashboardDir } from '@shared/dashboard'
+import { projectPluginsDir } from '@shared/project-plugins'
 import { censusTrack } from '@shared/census'
 
 type Listener = (files: string[]) => void
@@ -60,8 +61,8 @@ function schedule(e: Entry): void {
   }, RETRY_MS)
 }
 
-export function watchDashboard(project: string, listener: Listener): () => void {
-  const dir = dashboardDir(project)
+export function watchDashboard(project: string, listener: Listener, folder: 'dashboard' | 'plugins' = 'dashboard'): () => void {
+  const dir = folder === 'plugins' ? projectPluginsDir(project) : dashboardDir(project)
   let e = entries.get(dir)
   if (!e) {
     e = { dir, listeners: new Set(), watcher: null, retry: null, flush: null, changed: new Set(), missing: false }

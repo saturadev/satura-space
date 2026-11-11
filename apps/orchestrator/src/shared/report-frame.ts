@@ -132,6 +132,7 @@ export type FrameTileStatus = {
   empty: boolean
   hooks: FrameHook[]
   pending: number
+  outline?: string
 }
 
 export type FrameEvent =
@@ -307,7 +308,8 @@ function tile(v: unknown): boolean {
     Array.isArray(v.hooks) &&
     v.hooks.length <= 200 &&
     v.hooks.every(hook) &&
-    num(v.pending)
+    num(v.pending) &&
+    (v.outline === undefined || str(v.outline, 20000))
   )
 }
 

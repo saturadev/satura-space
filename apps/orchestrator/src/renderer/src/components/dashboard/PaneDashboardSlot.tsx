@@ -71,7 +71,7 @@ function stackBoxes(tiles: Tile[], width: number): { rects: TileRect[]; height: 
   return { rects, height: Math.max(...tops) + PAD }
 }
 
-function usePlace(tabId: string): TilePlace | null {
+export function usePlace(tabId: string): TilePlace | null {
   const key = useAppStore((s) => {
     for (const [workspaceId, tabs] of Object.entries(s.tabsByWorkspace)) {
       const t = tabs.find((x) => x.id === tabId)

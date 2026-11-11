@@ -77,6 +77,7 @@ export interface TileCalls {
   file: (path: string, as?: 'json' | 'text') => Promise<DashboardFileResult>
   watch: (path: string, cb: () => void) => () => void
   saveState: (key: string, value: unknown) => void
+  exec: (plugin: string, fn: string, args: unknown[]) => Promise<unknown>
 }
 
 export interface TileRuntime {
@@ -279,6 +280,45 @@ function useStore<T>(key: string, initial: T): [T, (v: T | ((p: T) => T)) => voi
   return [value, set]
 }
 
+function useExec<T>(fn: string) {
+  const rt = useTile('useExec')
+  const plugin = rt.widget.startsWith('plugin.') ? rt.widget.slice(7) : ''
+  const name = String(fn ?? '')
+  const [st, setSt] = useState<{ value: T | undefined; error: string | undefined; running: boolean; at: number | undefined }>({ value: undefined, error: undefined, running: false, at: undefined })
+  const slot = useRef<ReturnType<HookRegistry['add']> | null>(null)
+  const { hooks, bump } = rt
+  useEffect(() => {
+    const s = hooks.add({ hook: 'useExec', target: name, status: 'ok' })
+    slot.current = s
+    return () => {
+      s.remove()
+      if (slot.current === s) slot.current = null
+    }
+  }, [hooks, name])
+  const run = async (...args: unknown[]): Promise<T | undefined> => {
+    const t0 = Date.now()
+    setSt((s) => ({ ...s, running: true }))
+    slot.current?.set({ status: 'loading' })
+    try {
+      if (!plugin) throw new Error('useExec works only in a plugin panel: it calls the functions in its exec.ts.')
+      const value = (await rt.calls.exec(plugin, name, args)) as T
+      const at = Date.now()
+      setSt({ value, error: undefined, running: false, at })
+      slot.current?.set({ status: 'ok', error: undefined, at, ms: at - t0 }, value)
+      bump()
+      return value
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e)
+      const at = Date.now()
+      setSt((s) => ({ ...s, error, running: false, at }))
+      slot.current?.set({ status: 'error', error, at, ms: at - t0 })
+      bump()
+      return undefined
+    }
+  }
+  return { run, value: st.value, error: st.error, running: st.running, at: st.at }
+}
+
 export const dashboardModule = Object.freeze({
   ...kit,
   useFetch,
@@ -287,5 +327,6 @@ export const dashboardModule = Object.freeze({
   useHandle,
   useGit,
   useLogs,
-  useFile
+  useFile,
+  useExec
 })

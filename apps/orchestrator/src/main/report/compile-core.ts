@@ -3,16 +3,18 @@ import ts from 'typescript'
 import type * as TS from 'typescript'
 import type { ReportCompileResult, ReportDiagnostic } from '@shared/report-compile'
 import { dashboardKindOf } from '@shared/dashboard'
+import { projectPluginKindOf } from '@shared/project-plugins'
 import { displayPath, formatDiagnostics, hashOf } from './compile-util'
 
 type Ts = typeof TS
 
-type Kind = 'report' | 'widget' | 'alert'
+type Kind = 'report' | 'widget' | 'alert' | 'panel'
 
 const ALLOWED_IMPORTS: Record<Kind, Set<string>> = {
   report: new Set(['react', '@satura/report']),
   widget: new Set(['react', '@satura/report', '@satura/dashboard']),
-  alert: new Set(['@satura/dashboard/alert'])
+  alert: new Set(['@satura/dashboard/alert']),
+  panel: new Set(['react', '@satura/report', '@satura/dashboard'])
 }
 
 const WORDS: Record<Kind, { some: string; one: string; imports: string; defaultHint: string }> = {
@@ -33,6 +35,12 @@ const WORDS: Record<Kind, { some: string; one: string; imports: string; defaultH
     one: 'an alert',
     imports: "'@satura/dashboard/alert'",
     defaultHint: "An alert needs a default export: export default alert({ every: 60, fetch: {...}, when: (data) => ... })"
+  },
+  panel: {
+    some: 'Plugin panels',
+    one: 'a plugin panel',
+    imports: "'react', '@satura/report' and '@satura/dashboard'",
+    defaultHint: 'A plugin panel needs a default export: export default function Panel() { return <Card title="…">…</Card> }'
   }
 }
 
@@ -191,7 +199,7 @@ function lint(ts: Ts, program: TS.Program, sf: TS.SourceFile, kind: Kind, push: 
       const sym = ts.isShorthandPropertyAssignment(node.parent)
         ? checker.getShorthandAssignmentValueSymbol(node.parent)
         : checker.getSymbolAtLocation(node)
-      if (fromLib(sym)) push(node, `${words.some} can't use '${node.text}'. ${kind === 'widget' ? "Use useFetch from '@satura/dashboard' for network data." : `Only ${words.imports} are available.`}`)
+      if (fromLib(sym)) push(node, `${words.some} can't use '${node.text}'. ${kind === 'widget' || kind === 'panel' ? "Use useFetch from '@satura/dashboard' for network data." : `Only ${words.imports} are available.`}`)
     }
     ts.forEachChild(node, visit)
   }
@@ -210,9 +218,38 @@ function toDiagnostic(ts: Ts, d: TS.Diagnostic, shown: string): ReportDiagnostic
   return { file: shown, line: 0, column: 0, code: d.code ? `TS${d.code}` : '', message }
 }
 
+function compileExec(file: string, source: string, root: string | undefined, t0: number): ReportCompileResult {
+  const shown = displayPath(file, root)
+  const out = ts.transpileModule(source, {
+    fileName: file,
+    reportDiagnostics: true,
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, isolatedModules: true }
+  })
+  const diagnostics: ReportDiagnostic[] = (out.diagnostics ?? []).map((d) => toDiagnostic(ts, d, shown))
+  const sf = ts.createSourceFile(file, source, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS)
+  const push = (node: TS.Node, message: string): void => {
+    const { line, character } = sf.getLineAndCharacterOfPosition(node.getStart(sf))
+    diagnostics.push({ file: shown, line: line + 1, column: character + 1, code: '', message })
+  }
+  const visit = (node: TS.Node): void => {
+    if (ts.isImportDeclaration(node) || ts.isImportEqualsDeclaration(node)) push(node, "exec.ts can't import modules: it runs inside satura_exec, where unity, handles, page, app and the other script globals are already there.")
+    else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) push(node, "exec.ts can't load modules at runtime.")
+    else if (ts.isExportDeclaration(node) && node.moduleSpecifier) push(node.moduleSpecifier, "exec.ts can't re-export other modules.")
+    ts.forEachChild(node, visit)
+  }
+  visit(sf)
+  diagnostics.sort((a, b) => a.line - b.line || a.column - b.column)
+  const stamp = hashOf(source)
+  const ms = Math.round(performance.now() - t0)
+  if (diagnostics.length) return { ok: false, file, stamp, diagnostics, text: formatDiagnostics(diagnostics), ms }
+  return { ok: true, file, stamp, code: out.outputText.replace(/\n\/\/# sourceMappingURL=.*\s*$/, '\n'), diagnostics: [], text: '', ms }
+}
+
 export async function compileSource(file: string, source: string, root: string | undefined): Promise<ReportCompileResult> {
   const t0 = performance.now()
-  const kind: Kind = dashboardKindOf(file) ?? 'report'
+  const plugin = projectPluginKindOf(file)
+  if (plugin === 'exec') return compileExec(file, source, root, t0)
+  const kind: Kind = dashboardKindOf(file) ?? plugin ?? 'report'
   const types = await loadTypes()
   const options = compilerOptions(ts)
   const shown = displayPath(file, root)

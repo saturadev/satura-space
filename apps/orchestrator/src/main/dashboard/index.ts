@@ -50,7 +50,7 @@ export function registerDashboardHandlers(): void {
   ipcMain.handle('dashboard:file', (_e, project: unknown, path: unknown, as: unknown) =>
     dashboardFile(text(project), text(path), as === 'json' || as === 'text' ? as : undefined)
   )
-  ipcMain.on('dashboard:watch', (e, id: unknown, project: unknown) => {
+  ipcMain.on('dashboard:watch', (e, id: unknown, project: unknown, folder: unknown) => {
     const wcId = e.sender.id
     const key = `${wcId}:${text(id)}`
     track(wcId)
@@ -58,9 +58,13 @@ export function registerDashboardHandlers(): void {
     const sender = e.sender
     subs.set(
       key,
-      watchDashboard(text(project), (files) => {
-        if (!sender.isDestroyed()) sender.send('dashboard:changed', { id: text(id), files })
-      })
+      watchDashboard(
+        text(project),
+        (files) => {
+          if (!sender.isDestroyed()) sender.send('dashboard:changed', { id: text(id), files })
+        },
+        folder === 'plugins' ? 'plugins' : 'dashboard'
+      )
     )
   })
   ipcMain.on('dashboard:unwatch', (e, id: unknown) => {

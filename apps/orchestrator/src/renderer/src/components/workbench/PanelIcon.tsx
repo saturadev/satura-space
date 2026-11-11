@@ -6,6 +6,7 @@ import {
   FileCode2,
   FileText,
   LayoutDashboard,
+  Puzzle,
   Film,
   FlaskConical,
   Gamepad2,
@@ -57,7 +58,8 @@ export const PANEL_KIND = {
   image: { icon: ImageIcon, name: 'Image' },
   log: { icon: FileClock, name: 'Log' },
   text: { icon: FileText, name: 'Document' },
-  code: { icon: FileCode2, name: 'File' }
+  code: { icon: FileCode2, name: 'File' },
+  plugin: { icon: Puzzle, name: 'Plugin' }
 } satisfies Record<string, Kind>
 
 export function panelKind(tab: Tab, file?: string): Kind {
@@ -78,7 +80,7 @@ export function panelKind(tab: Tab, file?: string): Kind {
       return PANEL_KIND.dashboard
     case 'plugin': {
       const panel = pluginPanel(tab.plugin)
-      return panel ? { icon: panel.icon, name: panel.title } : PANEL_KIND.code
+      return panel ? { icon: panel.icon, name: panel.title } : PANEL_KIND.plugin
     }
     case 'file-viewer': {
       const f = file ?? ''

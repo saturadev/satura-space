@@ -7,6 +7,7 @@ import { unityProvider } from '../unity/unity-instance-provider'
 import { UnityControlClient } from '../unity/unity-control-client'
 import type { HandleParams } from '@shared/app-handles'
 import type { MainPlugin, MainPluginSetup, PluginCtx, PluginExecFn, PluginHandleDef, PluginManifest } from './api'
+import { listProjectPlugins, projectExecModules, projectPluginsCall, type BuiltInPluginInfo, type ProjectExecModule } from './project'
 
 const manifests = import.meta.glob<PluginManifest>('../../../../../plugins/*/plugin.json', { eager: true, import: 'default' })
 const setups = import.meta.glob<MainPluginSetup>('../../../../../plugins/*/main.ts', { eager: true, import: 'default' })
@@ -84,6 +85,26 @@ export function pluginGlobals(): Record<string, string[]> {
   return Object.fromEntries([...execs].filter(([, fns]) => fns.size > 0).map(([name, fns]) => [name, [...fns.keys()]]))
 }
 
+function builtInPlugins(): BuiltInPluginInfo[] {
+  const names = new Set([...Object.keys(manifests), ...Object.keys(setups)].map(folderOf))
+  return [...names].sort().map((name) => {
+    const manifest = Object.entries(manifests).find(([k]) => folderOf(k) === name)?.[1]
+    return { name, title: manifest?.title || name, description: manifest?.description || '', functions: [...(execs.get(name)?.keys() ?? [])].map((fn) => `${name}.${fn}`) }
+  })
+}
+
+export async function scriptPlugins(projectRoot: string): Promise<{ builtIn: Record<string, string[]>; project: ProjectExecModule[] }> {
+  const project = await projectExecModules(projectRoot, builtInPlugins().map((b) => b.name)).catch((e: unknown) => {
+    console.warn(`[plugin] project plugins of ${projectRoot} could not be read: ${(e as Error)?.message ?? e}`)
+    return []
+  })
+  return { builtIn: pluginGlobals(), project }
+}
+
+export function pluginsCall(args: Record<string, unknown>, ctx: { window: number; projectRoot: string; paneKey: string; workspace: string | null }): Promise<unknown> {
+  return projectPluginsCall(args, ctx, builtInPlugins())
+}
+
 export async function callPluginExec(plugin: string, fn: string, args: unknown[], ctx: Omit<PluginCtx, 'log'>): Promise<unknown> {
   const run = execs.get(plugin)?.get(fn)
   if (!run) throw new Error(`There is no ${plugin}.${fn}(). ${plugin} has ${[...(execs.get(plugin)?.keys() ?? [])].map((f) => `${f}()`).join(', ') || 'no functions'}.`)
@@ -115,6 +136,7 @@ export function registerPluginHandlers(): void {
       console.error(`[plugin] ${name} setup failed: ${(e as Error)?.message ?? e}`)
     }
   }
+  ipcMain.handle('plugin:project', (_e, project: unknown) => listProjectPlugins(typeof project === 'string' ? project : '', builtInPlugins().map((b) => b.name)))
   ipcMain.handle('plugin:call', async (e: IpcMainInvokeEvent, plugin: unknown, handle: unknown, projectRoot: unknown, params: unknown) => {
     try {
       const given = params && typeof params === 'object' && !Array.isArray(params) ? (params as HandleParams) : {}

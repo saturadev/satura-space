@@ -5,6 +5,7 @@ import { ReportApi, ReportContext, ReportStore, type ReportBridge } from '../com
 import { LineMap, evalLineOffset, mapStack } from '../components/report/source-map'
 import { HookRegistry, TileContext, dashboardModule, type TileCalls, type TileRuntime } from '../components/dashboard/runtime'
 import { call, emit, notify, onWatch } from './channel'
+import type { SaturaExecReply } from '@shared/satura-exec'
 
 class TileBoundary extends Component<{ children: ReactNode; mapper: Mapper; onError: (text: string) => void }, { failed: boolean }> {
   state = { failed: false }
@@ -46,10 +47,50 @@ const tileCalls: TileCalls = {
       notify('dash.unwatch', [path])
     }
   },
-  saveState: (key, value) => notify('dash.saveState', [key, value])
+  saveState: (key, value) => notify('dash.saveState', [key, value]),
+  exec: async (plugin, fn, args) => {
+    const code = `return await plugins[${JSON.stringify(plugin)}][${JSON.stringify(fn)}](...${JSON.stringify(args)})`
+    const reply = await call<SaturaExecReply>('action', [code])
+    if (!reply.ok) throw new Error(reply.failure?.message ?? reply.error ?? 'The script failed')
+    return reply.result === undefined ? undefined : JSON.parse(reply.result)
+  }
 }
 
 let currentHooks: HookRegistry | null = null
+
+const ROLE_OF: Record<string, string> = { button: 'button', a: 'link', h1: 'heading', h2: 'heading', h3: 'heading', h4: 'heading', input: 'textbox', textarea: 'textbox', select: 'combobox' }
+
+function clip(text: string): string {
+  const t = text.replace(/\s+/g, ' ').trim()
+  return t.length > 200 ? `${t.slice(0, 199)}…` : t
+}
+
+function outlineOf(root: Element | null): string {
+  const lines: string[] = []
+  const walk = (node: Node): void => {
+    if (lines.length >= 300) return
+    if (node.nodeType === Node.TEXT_NODE) {
+      const t = clip(node.textContent ?? '')
+      if (t) lines.push(`- text "${t}"`)
+      return
+    }
+    if (!(node instanceof HTMLElement) || node.hidden || node.getAttribute('aria-hidden') === 'true') return
+    const role = node.getAttribute('role') ?? ROLE_OF[node.tagName.toLowerCase()] ?? ''
+    const off = (node as HTMLButtonElement).disabled ? ' [disabled]' : ''
+    if (role === 'button' || role === 'link' || role === 'heading') {
+      lines.push(`- ${role} "${clip(node.innerText || node.getAttribute('aria-label') || '')}"${off}`)
+      return
+    }
+    if (role === 'textbox' || role === 'combobox') {
+      const label = node.getAttribute('aria-label') || node.getAttribute('placeholder') || ''
+      lines.push(`- ${role}${label ? ` "${clip(label)}"` : ''}: ${clip((node as HTMLInputElement).value ?? '')}${off}`)
+      return
+    }
+    for (const child of Array.from(node.childNodes)) walk(child)
+  }
+  if (root) walk(root)
+  return lines.join('\n').slice(0, 20000)
+}
 
 export function tileHookData(): unknown[] {
   return currentHooks?.snapshot() ?? []
@@ -141,7 +182,7 @@ export function FrameTile({ load, bridge, mediaUrl }: { load: FrameLoad; bridge:
   useEffect(() => {
     emit({
       e: 'tile',
-      tile: { version: renderKey, status, error: error.slice(0, 60000), title: title.slice(0, 512), rendered: rendered === renderKey, empty: empty === renderKey, hooks: hookSnap.list.slice(0, 200), pending: hookSnap.pending }
+      tile: { version: renderKey, status, error: error.slice(0, 60000), title: title.slice(0, 512), rendered: rendered === renderKey, empty: empty === renderKey, hooks: hookSnap.list.slice(0, 200), pending: hookSnap.pending, outline: outlineOf(contentRef.current) }
     })
   }, [statusKey])
 

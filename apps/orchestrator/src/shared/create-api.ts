@@ -732,13 +732,27 @@ export function createApi(t: IpcTransport, p: ApiPlatform): PreloadApi {
     dashboard: createDashboardApi(t),
     plugins: {
       call: (plugin, handle, projectRoot, params) => t.invoke('plugin:call', plugin, handle, projectRoot, params),
-      onEvent: (cb) => t.on('plugin:event', (plugin: string, event: string, data: unknown) => cb(plugin, event, data))
+      onEvent: (cb) => t.on('plugin:event', (plugin: string, event: string, data: unknown) => cb(plugin, event, data)),
+      project: (project) => t.invoke('plugin:project', project),
+      watch: (project, cb) => watchSspace(t, project, cb, 'plugins')
     }
   }
   return api
 }
 
 let dashboardWatchSeq = 0
+
+function watchSspace(t: IpcTransport, project: string, cb: (files: string[]) => void, folder: 'dashboard' | 'plugins'): () => void {
+  const id = `dw${++dashboardWatchSeq}-${Math.random().toString(36).slice(2, 8)}`
+  const off = t.on('dashboard:changed', (ev: { id: string; files: string[] }) => {
+    if (ev?.id === id) cb(ev.files)
+  })
+  t.send('dashboard:watch', id, project, folder)
+  return () => {
+    off()
+    t.send('dashboard:unwatch', id)
+  }
+}
 
 function createDashboardApi(t: IpcTransport): DashboardApi {
   return {
@@ -751,17 +765,7 @@ function createDashboardApi(t: IpcTransport): DashboardApi {
     git: (project, req) => t.invoke('dashboard:git', project, req),
     logs: (project, req) => t.invoke('dashboard:logs', project, req),
     file: (project, path, as) => t.invoke('dashboard:file', project, path, as),
-    watch: (project, cb) => {
-      const id = `dw${++dashboardWatchSeq}-${Math.random().toString(36).slice(2, 8)}`
-      const off = t.on('dashboard:changed', (ev: { id: string; files: string[] }) => {
-        if (ev?.id === id) cb(ev.files)
-      })
-      t.send('dashboard:watch', id, project)
-      return () => {
-        off()
-        t.send('dashboard:unwatch', id)
-      }
-    },
+    watch: (project, cb) => watchSspace(t, project, cb, 'dashboard'),
     setProjects: (projects) => t.send('dashboard:projects', projects),
     alerts: (project) => t.invoke('dashboard:alerts', project),
     alertSent: (project, id, to) => t.send('dashboard:alertSent', project, id, to),

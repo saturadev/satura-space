@@ -2,6 +2,7 @@ import type { AppCacheId, AppCaches, AppCachesCleared } from './app-caches'
 import type { RvSignal } from './remote-video'
 import type { ReportCompileResult, ReportEntry } from './report-compile'
 import type { DashboardApi } from './dashboard-api'
+import type { ProjectPluginInfo } from './project-plugins'
 import type { ReportExportPayload, ReportExportResult, ReportExportScan } from './report-export'
 import type { SaturaExecReply } from './satura-exec'
 import type { RemoteAccountUsage, RemoteForgetResult, RemoteMediaInfo, RemotePairAnswer, RemotePairAsk, RemotePairInfo, RemotePairedPhone, RemotePresence, RemoteStatus, RemoteStoreActionRequest } from './remote-protocol'
@@ -1020,6 +1021,8 @@ export interface PreloadApi {
   plugins: {
     call: (plugin: string, handle: string, projectRoot: string, params: Record<string, unknown>) => Promise<{ ok: true; value: unknown } | { ok: false; error: string }>
     onEvent: (cb: (plugin: string, event: string, data: unknown) => void) => () => void
+    project: (project: string) => Promise<ProjectPluginInfo[]>
+    watch: (project: string, cb: (files: string[]) => void) => () => void
   }
 }
 

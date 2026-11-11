@@ -91,7 +91,8 @@ interface RunnerDeps {
   runEnded?(run: number): void
   unityMode?(args: Record<string, unknown>, projectRoot: string): Promise<unknown>
   unity?(args: Record<string, unknown>, projectRoot: string, signal: AbortSignal): Promise<unknown>
-  plugins?(): Record<string, string[]>
+  plugins?(projectRoot: string): Promise<{ builtIn: Record<string, string[]>; project: { name: string; code?: string; error?: string }[] }>
+  pluginsApi?(args: Record<string, unknown>, ctx: { window: number; projectRoot: string; paneKey: string; workspace: string | null }): Promise<unknown>
   plugin?(args: Record<string, unknown>, ctx: { window: number | null; projectRoot: string; signal: AbortSignal }): Promise<unknown>
   requireGraphics?(call: string, path: string): void
   log(line: string): void
@@ -425,6 +426,13 @@ export function createRunner(deps: RunnerDeps): { run: (req: SaturaExecRequest, 
             inflight.delete(key)
           }
         }
+        case 'plugins': {
+          if (!deps.pluginsApi) throw new Error('Plugins are not available here.')
+          if (params.action === 'list') return deps.pluginsApi(params, { window: caller.window ?? -1, projectRoot, paneKey, workspace: caller.workspace ?? null })
+          const window = resolveWindow(params.window)
+          await driverFor(window)
+          return deps.pluginsApi(params, { window, projectRoot, paneKey, workspace: window === caller.window ? (caller.workspace ?? null) : null })
+        }
         case 'plugin': {
           if (!deps.plugin) throw new Error('Plugins are not available here.')
           const label = `${String(params.plugin ?? '')}.${String(params.fn ?? '')}`
@@ -482,7 +490,8 @@ export function createRunner(deps: RunnerDeps): { run: (req: SaturaExecRequest, 
     deps.log(`run ${runId}: start, window ${caller.window ?? 'none'}, workspace ${caller.workspace || 'none'}, limit ${timeoutMs / 1000}s, drift ${drift ? 'on' : 'off'}`)
     const windowRows = (): string => JSON.stringify(deps.windows().map((w) => ({ ...w, caller: w.id === caller.window })))
     let sentWindows = windowRows()
-    const host = deps.spawnHost(req.code, JSON.stringify({ windows: JSON.parse(sentWindows), drift, plugins: deps.plugins?.() ?? {} }))
+    const plugins = (await deps.plugins?.(projectRoot)) ?? { builtIn: {}, project: [] }
+    const host = deps.spawnHost(req.code, JSON.stringify({ windows: JSON.parse(sentWindows), drift, plugins: plugins.builtIn, projectPlugins: plugins.project }))
     const outcome = await new Promise<{ result?: string; failure?: ScriptFailure }>((resolve) => {
       let settled = false
       let timer: ReturnType<typeof setTimeout> | undefined

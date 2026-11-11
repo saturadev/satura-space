@@ -199,6 +199,7 @@
   overflow: hidden;
   transition: left 0.12s ease, top 0.12s ease, width 0.12s ease, height 0.12s ease;
 }
+.dk-tile.fill { inset: 0; border: 0; border-radius: 0; transition: none; }
 .dk-tile.moving { transition: none; z-index: 5; box-shadow: 0 10px 30px rgb(0 0 0 / 0.45); border-color: var(--accent); }
 .dk-tile.failed { border-color: color-mix(in srgb, var(--error) 45%, var(--hairline)); }
 .dk-tile-head {

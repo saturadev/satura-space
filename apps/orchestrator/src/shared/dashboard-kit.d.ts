@@ -68,3 +68,13 @@ export interface FileState<T = any> {
 }
 
 export function useFile<T = any>(path: string, options?: { as?: 'json' | 'text' }): FileState<T>
+
+export interface ExecState<T = any> {
+  run: (...args: unknown[]) => Promise<T | undefined>
+  value: T | undefined
+  error: string | undefined
+  running: boolean
+  at: number | undefined
+}
+
+export function useExec<T = any>(fn: string): ExecState<T>

@@ -31,7 +31,7 @@ let nextId = 1
 function cleanStack(stack: string | undefined, fallback: string): string {
   const lines = (stack ?? '').split('\n')
   const head = lines.filter((l) => !/^\s+at /.test(l)).join('\n') || fallback
-  const frames = lines.filter((l) => /^\s+at /.test(l) && l.includes(SCRIPT_FILE))
+  const frames = lines.filter((l) => /^\s+at /.test(l) && (l.includes(SCRIPT_FILE) || l.includes('.sspace/plugins/')))
   return [head, ...frames].join('\n')
 }
 
@@ -749,6 +749,153 @@ const dashboard = {
   tile: (id: string) => mainPage.locator(`[data-dashboard-panel] [data-dashboard-tile="${textArg(id, 'dashboard.tile() takes the widget id as a string').replace(/"/g, '\\"')}"]`)
 }
 
+const PLUGIN_RENDER_MS = 30000
+
+type PluginLoad = { load: ((exports: Options) => void) | null; error: string }
+type PluginSeen = { title: string; status: string; error: string; problem: string; hooks: unknown[]; tile: boolean; outline: string }
+type PluginOpened = { name: string; source: string; title: string; tabId: string; compile?: { panel: string; exec?: string } }
+type BuiltInRow = { name: string; title: string; description: string; functions: string[]; source: 'built-in' }
+type ProjectRow = { name: string; title: string; description: string; dir: string; panel: boolean; exec: boolean; guide: boolean; source: 'project'; errors: string[] }
+
+const pluginLoads = new Map<string, PluginLoad>()
+const pluginExports = new Map<string, Options | Error>()
+
+const pluginCall = (name: string, fn: string): string => (/^[A-Za-z_$][\w$]*$/.test(name) ? `plugins.${name}.${fn}()` : `plugins['${name}'].${fn}()`)
+
+function pluginModule(name: string): Options | Error {
+  const have = pluginExports.get(name)
+  if (have) return have
+  const entry = pluginLoads.get(name)
+  let out: Options | Error
+  if (!entry) out = new Error(`There is no project plugin "${name}" with an exec.ts. plugins.list() shows the plugins.`)
+  else if (!entry.load) out = new Error(`plugins.${name} can't run: ${entry.error}`)
+  else {
+    const exports: Options = {}
+    try {
+      entry.load(exports)
+      out = exports
+    } catch (e) {
+      out = new Error(`plugins.${name} can't run: .sspace/plugins/${name}/exec.ts threw while loading: ${format(e)}`)
+    }
+  }
+  pluginExports.set(name, out)
+  return out
+}
+
+function pluginFunctions(name: string): string[] {
+  const m = pluginModule(name)
+  return m instanceof Error ? [] : Object.keys(m).filter((k) => typeof m[k] === 'function' && k !== 'default')
+}
+
+function pluginObject(name: string): Options {
+  return new Proxy(Object.create(null) as Options, {
+    get(_t, key) {
+      if (typeof key !== 'string' || key === 'then' || key === 'toJSON') return undefined
+      return (...args: unknown[]) =>
+        step(`plugins.${name}.${key}`, async () => {
+          const m = pluginModule(name)
+          if (m instanceof Error) throw m
+          const fn = m[key]
+          if (typeof fn !== 'function') throw new TypeError(`There is no ${pluginCall(name, key)}. ${name} has ${pluginFunctions(name).map((f) => `${f}()`).join(', ') || 'no exported functions'}.`)
+          return (fn as (...a: unknown[]) => unknown)(...args)
+        })
+    }
+  })
+}
+
+const pluginPanel = (name: string): string => `[data-plugin-panel="${name.replace(/["\\]/g, '\\$&')}"]`
+
+async function pluginSettled(name: string): Promise<void> {
+  const panel = mainPage.locator(`${pluginPanel(name)}[data-plugin-settled]`).first()
+  await panel.waitFor({ state: 'attached', timeout: PLUGIN_RENDER_MS })
+  await showPane(mainPage, panel).catch(() => null)
+}
+
+async function pluginSeen(name: string): Promise<PluginSeen> {
+  return (await mainPage.evaluate((sel: string) => {
+    const panel = document.querySelector(sel)
+    const tile = panel?.querySelector('[data-dashboard-tile]')
+    let hooks: unknown[] = []
+    try {
+      hooks = JSON.parse(tile?.querySelector('[data-dashboard-hooks]')?.textContent || '[]')
+    } catch {
+      hooks = []
+    }
+    return {
+      title: tile?.getAttribute('data-dashboard-title') ?? panel?.getAttribute('data-plugin-title') ?? '',
+      status: tile?.getAttribute('data-dashboard-status') ?? (panel?.querySelector('[data-plugin-problem]') ? 'error' : panel ? 'ok' : ''),
+      error: tile?.querySelector('[data-dashboard-error]')?.textContent ?? '',
+      problem: panel?.querySelector('[data-plugin-problem]')?.textContent ?? '',
+      hooks,
+      tile: !!tile,
+      outline: tile?.querySelector('[data-dashboard-outline]')?.textContent ?? ''
+    }
+  }, pluginPanel(name))) as PluginSeen
+}
+
+async function openPlugin(name: string): Promise<unknown> {
+  const res = (await rpc('plugins', { window: null, action: 'open', name })) as PluginOpened
+  await pluginSettled(name)
+  const seen = await pluginSeen(name)
+  const errors: Options = {}
+  if (res.compile && res.compile.panel !== 'ok') errors.panel = res.compile.panel
+  else if (seen.status === 'error' && seen.error) errors.panel = seen.error
+  if (seen.problem) errors.plugin = seen.problem
+  if (res.compile?.exec && res.compile.exec !== 'ok') errors.exec = res.compile.exec
+  else if (res.compile?.exec) {
+    const m = pluginModule(name)
+    if (m instanceof Error) errors.exec = m.message
+  }
+  return { name, source: res.source, title: seen.title || res.title, status: seen.status, tab: res.tabId, errors }
+}
+
+async function readPlugin(name: string): Promise<unknown> {
+  const shown = (await mainPage.evaluate((sel: string) => !!document.querySelector(sel), pluginPanel(name))) as boolean
+  if (shown) await pluginSettled(name)
+  else await openPlugin(name)
+  const seen = await pluginSeen(name)
+  const aria = seen.tile ? seen.outline : await snapshot(mainPage.locator(pluginPanel(name)).first()).catch((e: Error) => `(no snapshot: ${e.message})`)
+  const loaded = seen.tile && pluginLoads.has(name) ? pluginModule(name) : null
+  const execError = loaded instanceof Error ? loaded.message : ''
+  return {
+    name,
+    title: seen.title,
+    status: seen.status,
+    ...(seen.error ? { error: seen.error } : {}),
+    ...(seen.problem ? { problem: seen.problem } : {}),
+    ...(execError ? { execError } : {}),
+    hooks: seen.hooks,
+    aria
+  }
+}
+
+async function listPlugins(): Promise<unknown[]> {
+  const r = (await rpc('plugins', { action: 'list' })) as { project: string; builtIn: BuiltInRow[]; own: ProjectRow[] }
+  const own = r.own.map(({ dir: _dir, ...p }) => {
+    const errors = [...p.errors]
+    let functions: string[] = []
+    if (p.exec && !errors.length) {
+      const m = pluginModule(p.name)
+      if (m instanceof Error) errors.push(m.message)
+      else functions = pluginFunctions(p.name).map((f) => pluginCall(p.name, f))
+    }
+    return { ...p, functions, errors }
+  })
+  return [...r.builtIn.map((b) => ({ ...b, functions: b.functions.map((f) => `${f}()`), errors: [] })), ...own]
+}
+
+const pluginsApi: Options = {
+  list: () => step('plugins.list', listPlugins),
+  open: (name?: unknown) => {
+    const n = textArg(name, "plugins.open() takes the plugin's name as a string, like plugins.open('scene-stats')").trim()
+    return step(`plugins.open ${n}`, () => openPlugin(n))
+  },
+  read: (name?: unknown) => {
+    const n = textArg(name, "plugins.read() takes the plugin's name as a string, like plugins.read('scene-stats')").trim()
+    return step(`plugins.read ${n}`, () => readPlugin(n))
+  }
+}
+
 type LiveInstance = { lifecycle?: string }
 
 async function unityRoot(folder: string): Promise<string> {
@@ -884,6 +1031,7 @@ const api: Record<string, unknown> = {
   video,
   report,
   dashboard,
+  plugins: pluginsApi,
   app,
   agents,
   logs,
@@ -906,6 +1054,11 @@ for (const [name, fns] of Object.entries(startup.plugins && typeof startup.plugi
   if (name in g || !Array.isArray(fns)) continue
   const calls = Object.fromEntries(fns.map((fn) => [String(fn), (...args: unknown[]) => rpc('plugin', { plugin: name, fn: String(fn), args })]))
   Object.defineProperty(g, name, { value: Object.freeze(calls), writable: false, configurable: false, enumerable: true })
+}
+g.__saturaModule = (name: string, load: unknown, error: string): void => {
+  if (name in pluginsApi) return
+  pluginLoads.set(name, { load: typeof load === 'function' ? (load as (exports: Options) => void) : null, error })
+  Object.defineProperty(pluginsApi, name, { get: () => pluginObject(name), enumerable: true })
 }
 g.__saturaDeliver = settle
 g.__saturaStart = start
