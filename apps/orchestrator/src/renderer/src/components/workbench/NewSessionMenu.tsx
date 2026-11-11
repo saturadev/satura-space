@@ -7,6 +7,8 @@ import { IS_PRIMARY_WINDOW } from '../../lib/window-role'
 import { AgentIcon } from '../../lib/agent-icon'
 import { AgentModelEffort } from '../AgentModelEffort'
 import { MoreAgentsSubmenu } from './MoreAgentsSubmenu'
+import { PluginsSubmenu } from './PluginsSubmenu'
+import type { ProjectPluginInfo } from '@shared/project-plugins'
 import { AnchoredLayer } from '../ui/AnchoredLayer'
 import { AgentLaunchRow } from './AgentLaunchRow'
 import { newSessionModel } from '../../lib/actions/new-session-actions'
@@ -35,6 +37,7 @@ export function NewSessionMenu({
   const ref = useRef<HTMLDivElement>(null)
   const [isUnityProject, setIsUnityProject] = useState<boolean | null>(null)
   const [isGitRepo, setIsGitRepo] = useState<boolean | null>(null)
+  const [projectPlugins, setProjectPlugins] = useState<ProjectPluginInfo[] | null>(null)
 
   useEffect(() => {
     const onDown = (e: MouseEvent): void => {
@@ -53,9 +56,28 @@ export function NewSessionMenu({
     }
   }, [onClose])
 
-  const m = newSessionModel(useAppStore.getState(), { workspaceId, groupId, defaultWorktreeId, isUnityProject, isGitRepo, onClose })
+  const m = newSessionModel(useAppStore.getState(), { workspaceId, groupId, defaultWorktreeId, isUnityProject, isGitRepo, projectPlugins, onClose })
   const { targetPath, existingUnityTab, existingConsoleTab, existingScmTab, existingScratchpadTab, existingDashboardTab, canOpenUnity, canOpenConsole, canOpenScm, favs, more, optionAgents, canResumeClaude } = m
-  const { openAgent, openClaudeResume, openTerminal, openUnity, openConsole, openScm, openReports, openDashboardPanel, openScratchpads, openTuner, plugins } = m
+  const { openAgent, openClaudeResume, openTerminal, openUnity, openConsole, openScm, openReports, openDashboardPanel, openScratchpads, openTuner } = m
+
+  useEffect(() => {
+    if (!targetPath) {
+      setProjectPlugins(null)
+      return
+    }
+    let alive = true
+    void window.api.plugins.project(targetPath).then(
+      (list) => {
+        if (alive) setProjectPlugins(list)
+      },
+      () => {
+        if (alive) setProjectPlugins(null)
+      }
+    )
+    return () => {
+      alive = false
+    }
+  }, [targetPath])
 
   useEffect(() => {
     if (!targetPath) {
@@ -237,29 +259,8 @@ export function NewSessionMenu({
         </>
       )}
 
-      {plugins.length > 0 && (
-        <>
-          <Separator />
-          {plugins.map((row) => (
-            <button
-              key={row.panel.key}
-              onClick={row.open}
-              disabled={!row.enabled}
-              title={row.existing ? `Show the open ${row.panel.title} panel for this folder` : row.panel.hint ?? row.panel.title}
-              className={otherRow}
-              data-plugin-panel-open={row.panel.key}
-            >
-              <PanelGlyph kind={{ icon: row.panel.icon, name: row.panel.title }} />
-              {row.existing ? `Show ${row.panel.title}` : row.panel.title}
-              {row.existing ? (
-                <span className="ml-auto text-[10px] text-zinc-500">already open</span>
-              ) : (
-                !row.enabled && isUnityProject === false && <span className="ml-auto text-[10px] text-zinc-600">not a Unity project</span>
-              )}
-            </button>
-          ))}
-        </>
-      )}
+      <Separator />
+      <PluginsSubmenu m={m} isUnityProject={isUnityProject} />
 
       <Separator />
       <button

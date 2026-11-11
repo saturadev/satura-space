@@ -44,8 +44,8 @@ export async function desktopTree(tabId: string): Promise<ActionNode[]> {
   const { workspaceId, tab } = found
   const worktrees = s.worktreesByWorkspace[workspaceId] ?? []
   const path = worktrees.find((w) => w.id === tab.worktreeId)?.path ?? worktrees[0]?.path
-  const k = await kinds(path)
-  const ctx = { workspaceId, groupId: tab.groupId, defaultWorktreeId: tab.worktreeId, isUnityProject: k.unity, isGitRepo: k.git, onClose: () => {} }
+  const [k, projectPlugins] = await Promise.all([kinds(path), path ? window.api.plugins.project(path).catch(() => []) : Promise.resolve([])])
+  const ctx = { workspaceId, groupId: tab.groupId, defaultWorktreeId: tab.worktreeId, isUnityProject: k.unity, isGitRepo: k.git, projectPlugins, onClose: () => {} }
   const fresh = useAppStore.getState()
   const model = newSessionModel(fresh, ctx)
   const wins = await window.api.window.list().catch(() => [])

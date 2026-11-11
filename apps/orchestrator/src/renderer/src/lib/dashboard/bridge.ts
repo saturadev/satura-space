@@ -25,7 +25,7 @@ function placeFor(project: string): { workspaceId: string; worktreeId: string; g
   return null
 }
 
-function defaultAgent(): AgentId | null {
+export function defaultAgent(): AgentId | null {
   const s = useAppStore.getState()
   const detected = s.detectedAgents ?? []
   const ok = (id: AgentId | null | undefined): id is AgentId => !!id && detected.includes(id) && s.settings?.agents[id]?.enabled !== false

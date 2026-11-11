@@ -10,6 +10,10 @@ import { openDashboard } from '../dashboard/open-dashboard'
 import { agentHasModelEffort } from '../../components/AgentModelEffort'
 import { IS_PRIMARY_WINDOW } from '../window-role'
 import { pluginPanels } from '../../plugins'
+import { buildNewPluginPrompt, projectPluginKey, type ProjectPluginInfo } from '@shared/project-plugins'
+import { defaultAgent } from '../dashboard/bridge'
+import { sendToAgent } from '../dashboard/send-agent'
+import { debugLog } from '@shared/debug-log'
 import { section, type ActionNode } from './action-tree'
 
 export type AgentLaunchTarget = 'split' | 'panel'
@@ -20,11 +24,12 @@ export interface NewSessionContext {
   defaultWorktreeId: string
   isUnityProject: boolean | null
   isGitRepo: boolean | null
+  projectPlugins?: ProjectPluginInfo[] | null
   onClose: () => void
 }
 
 export function newSessionModel(s: AppState, ctx: NewSessionContext) {
-  const { workspaceId, groupId, defaultWorktreeId, isUnityProject, isGitRepo, onClose } = ctx
+  const { workspaceId, groupId, defaultWorktreeId, isUnityProject, isGitRepo, projectPlugins, onClose } = ctx
   const worktrees = s.worktreesByWorkspace[workspaceId] ?? []
   const tabs = s.tabsByWorkspace[workspaceId] ?? []
   const settings = s.settings
@@ -109,6 +114,30 @@ export function newSessionModel(s: AppState, ctx: NewSessionContext) {
     }
     return { panel, existing: !!found, enabled, open }
   })
+  const ownPlugins = (projectPlugins ?? []).map((info) => {
+    const key = projectPluginKey(info.name)
+    const found = tabs.find((t) => t.contentType === 'plugin' && t.plugin === key && !!targetPath && pathByWorktreeId.get(t.worktreeId) === targetPath)
+    const enabled = !!targetPath && (!!found || (!info.problem && info.panel))
+    const open = (): void => {
+      if (!targetWorktreeId || !enabled) return
+      if (found) s.activateTab(found.id)
+      else s.openTabBeside(workspaceId, groupId, targetWorktreeId, { label: info.title, contentType: 'plugin', plugin: key })
+      onClose()
+    }
+    const note = info.problem ? 'has a problem' : !info.panel ? 'no panel' : ''
+    return { info, key, existing: !!found, enabled, note, open }
+  })
+  const pluginAgent = defaultAgent()
+  const startNewPlugin = async (request: string): Promise<{ sent: true; label: string } | { sent: false; error: string }> => {
+    const ask = request.trim()
+    if (!ask) return { sent: false, error: 'Say what the plugin should do.' }
+    if (!targetWorktreeId || !targetPath) return { sent: false, error: 'This panel has no project folder.' }
+    if (!pluginAgent) return { sent: false, error: 'No agent to start. Turn one on in Settings.' }
+    const r = await sendToAgent({ workspaceId, worktreeId: targetWorktreeId, groupId }, { kind: 'new', agentId: pluginAgent, target: 'split' }, buildNewPluginPrompt(ask))
+    debugLog(`[plugin] new plugin for ${targetPath}: ${r.sent ? `${r.label} started` : r.error}`)
+    if (r.sent) onClose()
+    return r.sent ? { sent: true, label: r.label } : r
+  }
   const openTuner = (): void => {
     if (!targetWorktreeId || isUnityProject !== true) return
     const sceneTuner = tabs.find((t) => t.contentType === 'tuner' && t.worktreeId === targetWorktreeId && isSceneTuner(t.tuner))
@@ -145,7 +174,10 @@ export function newSessionModel(s: AppState, ctx: NewSessionContext) {
     openReports,
     openDashboardPanel,
     openTuner,
-    plugins
+    plugins,
+    ownPlugins,
+    pluginAgent,
+    startNewPlugin
   }
 }
 
@@ -212,10 +244,41 @@ export function newSessionNodes(s: AppState, m: NewSessionModel, isUnityProject:
           ]
         : []
     ),
-    section(
-      'plugins',
-      m.plugins.map((row) => ({ id: `open-plugin:${row.panel.key}`, label: row.existing ? `Show ${row.panel.title}` : row.panel.title, icon: row.panel.symbol ?? 'shippingbox', enabled: row.enabled, run: row.open }))
-    ),
+    section('plugins', [
+      {
+        id: 'open-plugins',
+        label: 'Plugins',
+        icon: 'puzzlepiece',
+        children: [
+          section(
+            'plugins.builtin',
+            m.plugins.map((row) => ({ id: `open-plugin:${row.panel.key}`, label: row.existing ? `Show ${row.panel.title}` : row.panel.title, icon: row.panel.symbol ?? 'shippingbox', enabled: row.enabled, run: row.open })),
+            'Built-in'
+          ),
+          section(
+            'plugins.project',
+            m.ownPlugins.length
+              ? m.ownPlugins.map((row) => ({ id: `open-plugin:${row.key}`, label: row.existing ? `Show ${row.info.title}` : row.info.title, icon: 'puzzlepiece', hint: row.note || undefined, enabled: row.enabled, run: row.open }))
+              : [{ id: 'plugins.project.none', label: 'No plugins yet', enabled: false }],
+            'This project'
+          ),
+          section('plugins.new', [
+            {
+              id: 'new-plugin',
+              label: 'New plugin…',
+              icon: 'plus',
+              enabled: !!m.targetPath && !!m.pluginAgent,
+              input: { title: 'New plugin', message: 'What should the plugin do? An agent writes it into .sspace/plugins.', placeholder: 'Show object and triangle counts of the scene', submit: 'Start agent' },
+              run: async (value) => {
+                if (value === undefined) return
+                const r = await m.startNewPlugin(value)
+                if (!r.sent) throw new Error(r.error)
+              }
+            }
+          ])
+        ]
+      }
+    ]),
     section('git', [
       { id: 'open-reports', label: 'Reports…', icon: 'doc.richtext', enabled: !!m.targetPath, run: m.openReports },
       { id: 'open-dashboard', label: m.existingDashboardTab ? 'Show Dashboard' : 'Dashboard', icon: 'gauge.with.dots.needle.33percent', enabled: !!m.targetPath, run: m.openDashboardPanel },
