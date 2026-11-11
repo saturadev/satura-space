@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.2.0 — 2026-11-12
+
+- **Project plugins** — an agent writes a plugin straight into the project's `.sspace/plugins/<name>/`, and the app picks it up while it runs: a panel with the dashboard kit, functions the agent calls as `plugins['<name>'].fn()` from `satura_exec`, and notes for agents. Saving a file reloads it. Panels and functions run in the same sandboxes as dashboard widgets and agent scripts, never as Node in the app, and `.sspace/` stays out of git.
+- **Plugins menu** — New session → Plugins lists Built-in plugins (Free Assets) and This project's plugins, and New plugin… starts your agent on a plugin you describe.
+- **Agents** — `plugins.list()`, `plugins.open(name)` and `plugins.read(name)` show a plugin's panel and its compile errors, so an agent can write and fix a plugin on its own. The agent guide has a new plugins page.
+
 ## 3.1.1 — 2026-11-12
 
 - **Dropdowns open in place** — a dropdown inside a panel, like the source filter in Free Assets, opens right under its button instead of somewhere else in the window.
