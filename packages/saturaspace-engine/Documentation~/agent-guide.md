@@ -37,6 +37,7 @@ Read the file for an API before you use it:
 | [scratchpads](agent-guide/scratchpads.md) | scratchpads, Unity modes, multiplayer clones |
 | [reports](agent-guide/reports.md) | report.tsx and the report kit |
 | [dashboard](agent-guide/dashboard.md) | live tiles, hooks, alerts |
+| [plugins](agent-guide/plugins.md) | project plugins in `.sspace/plugins`: a panel, `plugins.*` functions |
 | [tuner](agent-guide/tuner.md) | handing values to the user, driving the Tuner |
 | [drift](agent-guide/drift.md) | targets, drift verbs, answering questions |
 | [app](agent-guide/app.md) | app parts, `page`, snapshot, agents, env files |

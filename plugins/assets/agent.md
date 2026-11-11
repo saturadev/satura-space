@@ -18,4 +18,4 @@ await assets.list()                                                             
 - A material is a `.mat` to put on renderers or terrain layers. Tile it with `mainTextureScale`.
 - An HDRI is a Panoramic skybox material. `skybox: true` also sets it on the open scene and refreshes ambient light; the scene is left unsaved.
 - Ask before importing at `4k` or `8k`: those downloads are tens to hundreds of MB.
-- Tell the user where an asset came from when you use it; the panel (New session → Free Assets) shows the same library with thumbnails.
+- Tell the user where an asset came from when you use it; the panel (New session → Plugins → Free Assets) shows the same library with thumbnails.

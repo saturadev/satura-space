@@ -108,6 +108,10 @@ React and lucide icons in `renderer.tsx`.
 - `agent.md` becomes `Documentation~/agent-guide/<name>.md` in the project, with a row in the
   guide's plugin table.
 
+These are built-in plugins with full trust. A project can also carry its own plugins in
+`.sspace/plugins/<name>/` (a panel and `exec.ts` functions run in the dashboard and `satura_exec`
+sandboxes); the agent guide's `plugins.md` describes them.
+
 Check a plugin like any change: on a dev instance, through its handles
 (`node scripts/satura.mjs --instance alt handle <name>.<handle>`) and an `exec` script that uses its
 globals. Changes to `unity/` reach the editor after a dev app relaunch and project reopen, like the
