@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.1 — 2026-11-12
+
+- **Dropdowns open in place** — a dropdown inside a panel, like the source filter in Free Assets, opens right under its button instead of somewhere else in the window.
+
 ## 3.1.0 — 2026-11-12
 
 - **Plugins** — a plugin is one folder in `plugins/` and ships inside the release: app handles, functions the agent calls from `satura_exec`, a panel in the New session menu, C# that goes into the project's editor, and a page of the agent guide. How to write one is in `CONTRIBUTING.md`.
