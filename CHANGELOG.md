@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.2.1 — 2026-11-12
+
+- **Plugins on the phone** — Satura Remote opens plugin panels, built-in and the project's own, from New session → Plugins. A project plugin reloads on the phone when its files change.
+- **Free Assets on the phone** — a phone layout with search, filter chips, a two-column grid and a full-screen details view. Importing shows each step with a progress bar, and a failed import shows the error with Try again.
+- **Fixes** — a Free Assets download that stops sending data fails after 30 seconds instead of hanging.
+
 ## 3.2.0 — 2026-11-12
 
 - **Project plugins** — an agent writes a plugin straight into the project's `.sspace/plugins/<name>/`, and the app picks it up while it runs: a panel with the dashboard kit, functions the agent calls as `plugins['<name>'].fn()` from `satura_exec`, and notes for agents. Saving a file reloads it. Panels and functions run in the same sandboxes as dashboard widgets and agent scripts, never as Node in the app, and `.sspace/` stays out of git.
