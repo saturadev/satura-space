@@ -67,7 +67,9 @@ const PHONE_CHANNELS: ReadonlySet<string> = new Set([
   ...prefixed('scratchpads', 'attach list create rename start stop restart remove'),
   'agent-exec:tell',
   'rvideo:signal',
-  ...prefixed('dashboard', 'load edit state fetch abort handle git logs file watch unwatch alerts alertSent')
+  ...prefixed('dashboard', 'load edit state fetch abort handle git logs file watch unwatch alerts alertSent'),
+  'plugin:call',
+  'plugin:project'
 ])
 
 export const PHONE_SETTINGS: readonly (keyof Settings)[] = ['unityPlayerVolume', 'unityPlayerMuted', 'reportZoom', 'terminalFontSize', 'editorFontSize']
@@ -145,6 +147,10 @@ function pathsOf(ch: string, args: unknown[]): PathNeed | null {
       return { need: [a0, under(a0, a1)], use: 'write' }
     case 'dashboard:watch':
       return { need: [a1], use: 'read' }
+    case 'plugin:call':
+      return { need: [a2], use: 'write' }
+    case 'plugin:project':
+      return { need: [a0], use: 'read' }
     case 'dashboard:abort':
     case 'dashboard:unwatch':
       return null

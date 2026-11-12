@@ -309,5 +309,6 @@ export const CHIP_ICON: Record<string, string> = {
   tuner: 'slider.horizontal.3',
   dashboard: 'gauge.with.dots.needle.33percent',
   terminal: 'terminal',
-  layout: 'square.grid.2x2'
+  layout: 'square.grid.2x2',
+  plugin: 'puzzlepiece'
 }

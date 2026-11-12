@@ -9,6 +9,7 @@ import { PaneFileViewerSlot } from '../components/workbench/PaneFileViewerSlot'
 import { PaneErrorBoundary } from '../components/workbench/PaneErrorBoundary'
 import { TargetedToolPane } from '../components/scratchpad/TargetedToolPane'
 import { PaneDashboardSlot } from '../components/dashboard/PaneDashboardSlot'
+import { PluginTab } from '../plugins/PluginTab'
 import { setDashboardAlerts } from '../lib/dashboard/alerts-store'
 import { PaneScratchpadSlot } from '../components/scratchpad/PaneScratchpadSlot'
 import { getTerminalInstance } from '../lib/terminal/terminal-registry'
@@ -788,6 +789,7 @@ function PhonePanel({ tab, projectPath, epoch }: { tab: Tab; projectPath: string
   else if (kind === 'unity') body = <UnityStream tab={tab} projectPath={projectPath} epoch={epoch} canStop />
   else if (kind === 'dashboard') body = <PaneDashboardSlot tabId={tab.id} projectPath={projectPath} />
   else if (kind === 'tuner') body = <RemoteTuner key={`${tab.id}:${epoch}`} tab={tab} worktreePath={projectPath} />
+  else if (kind === 'plugin') body = <PluginTab tabId={tab.id} projectPath={projectPath} plugin={tab.plugin ?? null} focused />
   else body = <Unsupported kind={kind} />
   return (
     <div

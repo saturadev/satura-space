@@ -1,6 +1,7 @@
 import { useAppStore } from '../store'
 import { defineHandle, workspaceByPath } from '../handles/registry'
 import { debugLog } from '@shared/debug-log'
+import { remoteLink } from '../lib/remote-link'
 import { projectPluginKey } from '@shared/project-plugins'
 import type { PanelDef, PluginManifest, RendererPlugin, RendererPluginSetup } from './api'
 
@@ -80,7 +81,11 @@ function pluginFor(name: string, manifest: PluginManifest): RendererPlugin {
     },
     openPanel: (id, projectRoot) => openPluginPanel(panelKey(name, id), projectRoot),
     openExternal: (url) => {
-      if (/^https:\/\//.test(url)) void window.api.shell.openExternal(url)
+      if (!/^https:\/\//.test(url)) return
+      if (!remoteLink()) return void window.api.shell.openExternal(url)
+      const win = window.open(url, '_blank')
+      if (win) win.opener = null
+      else console.warn(`[plugin] ${name}: the browser didn't open ${url}`)
     }
   }
 }
