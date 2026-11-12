@@ -1,6 +1,6 @@
 {
     "name": "com.saturaspace.engine",
-    "version": "3.2.0",
+    "version": "3.2.1",
     "displayName": "Satura Space Engine",
     "description": "Satura Space engine: headless raw-stream server, the MCP editor bridge, live C# hot reload, and the game API agents use (SaturaHandle, SaturaLog, SaturaStaging). The Satura Space app embeds it per project, keeps it out of the user's repo and out of player builds.",
     "unity": "6000.0",
