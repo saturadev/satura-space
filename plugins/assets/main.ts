@@ -48,6 +48,8 @@ const PH_API = 'https://api.polyhaven.com'
 const ACG_API = 'https://ambientcg.com/api/v3'
 const DAY_MS = 24 * 60 * 60 * 1000
 const ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/
+const STALL_MS = 30_000
+const THUMB_MAX = 1_500_000
 const SOURCE_DIR: Record<AssetSource, string> = { polyhaven: 'PolyHaven', ambientcg: 'ambientCG' }
 const THIRD_PARTY = 'Assets/ThirdParty'
 const CREDITS = `${THIRD_PARTY}/CREDITS.md`
@@ -347,18 +349,62 @@ export default function setup(p: MainPlugin): void {
   }
 
   async function download(url: string, onBytes: (n: number) => void): Promise<Buffer> {
-    const res = await fetch(url, { headers: { 'User-Agent': ua } })
-    if (!res.ok || !res.body) throw new Error(`${new URL(url).host} answered ${res.status} for ${basename(new URL(url).pathname)}`)
-    if (/text\/html/i.test(res.headers.get('content-type') ?? '')) throw new Error(`${basename(new URL(url).pathname)} needs a sign-in or token, so it was skipped.`)
-    const chunks: Buffer[] = []
-    const reader = res.body.getReader()
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      chunks.push(Buffer.from(value))
-      onBytes(value.byteLength)
+    const stall = new AbortController()
+    let timer = setTimeout(() => stall.abort(), STALL_MS)
+    const alive = (): void => {
+      clearTimeout(timer)
+      timer = setTimeout(() => stall.abort(), STALL_MS)
     }
-    return Buffer.concat(chunks)
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': ua }, signal: stall.signal })
+      if (!res.ok || !res.body) throw new Error(`${new URL(url).host} answered ${res.status} for ${basename(new URL(url).pathname)}`)
+      if (/text\/html/i.test(res.headers.get('content-type') ?? '')) throw new Error(`${basename(new URL(url).pathname)} needs a sign-in or token, so it was skipped.`)
+      const chunks: Buffer[] = []
+      const reader = res.body.getReader()
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        alive()
+        chunks.push(Buffer.from(value))
+        onBytes(value.byteLength)
+      }
+      return Buffer.concat(chunks)
+    } catch (e) {
+      if (stall.signal.aborted) throw new Error(`${new URL(url).host} sent nothing for ${STALL_MS / 1000}s while downloading ${basename(new URL(url).pathname)}. Check the internet connection and try again.`)
+      throw e
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  function thumbUrl(source: AssetSource, url: string, large: boolean): string {
+    if (source === 'polyhaven') return url.replace(/width=\d+/, `width=${large ? 512 : 320}`).replace(/height=\d+/, `height=${large ? 512 : 320}`)
+    return large ? url : url.replace('/512-WEBP/', '/256-WEBP/')
+  }
+
+  function imageType(data: Buffer): string | null {
+    if (data.subarray(0, 4).toString('latin1') === 'RIFF' && data.subarray(8, 12).toString('latin1') === 'WEBP') return 'image/webp'
+    if (data[0] === 0x89 && data.subarray(1, 4).toString('latin1') === 'PNG') return 'image/png'
+    if (data[0] === 0xff && data[1] === 0xd8) return 'image/jpeg'
+    return null
+  }
+
+  async function thumb(ref: unknown, large: boolean): Promise<string> {
+    const { source, id } = parseRef(ref)
+    const row = (await index(source)).find((r) => r.id === id)
+    if (!row?.thumbnail) throw new Error(`${SOURCE_LABEL[source]} has no preview for ${id}.`)
+    const file = join(p.cacheDir, 'thumbs', `${source}-${id}${large ? '-large' : ''}`)
+    const cached: Buffer | null = await readFile(file).catch(() => null)
+    const data = cached ?? (await download(thumbUrl(source, row.thumbnail, large), () => {}))
+    if (!cached) {
+      if (data.length > THUMB_MAX) throw new Error(`The preview of ${id} is ${(data.length / 1e6).toFixed(1)} MB, too big to send.`)
+      if (!imageType(data)) throw new Error(`The preview of ${id} is not an image.`)
+      await mkdir(dirname(file), { recursive: true })
+      await writeFile(file, data)
+    }
+    const type = imageType(data)
+    if (!type) throw new Error(`The preview of ${id} is not an image.`)
+    return `data:${type};base64,${data.toString('base64')}`
   }
 
   function inside(root: string, rel: string): string {
@@ -529,6 +575,12 @@ export default function setup(p: MainPlugin): void {
     description: "Downloads one asset from assets.search() into Assets/ThirdParty/<Source>/<id>/ of the project and has Unity build its materials for the project's render pipeline: a prefab for a model, a material for a material, a Panoramic skybox material for an HDRI (skybox: true also sets it as the open scene's skybox, unsaved). Writes a line to Assets/ThirdParty/CREDITS.md. Returns kind, path, prefab, material or skybox, tris and size for models, pipeline, files and bytes.",
     params: { id: '', res: '1k', skybox: false },
     run: (params, ctx) => importAsset(ctx, params.id, { res: String(params.res), skybox: params.skybox === true })
+  })
+  p.handle({
+    name: 'thumb',
+    description: "Returns the preview image of one asset from assets.search() as a data: URL, downloaded on this computer and kept in the plugin cache, the way the Free Assets panel shows it on a phone. large: true for the details view size.",
+    params: { id: '', large: false },
+    run: (params) => thumb(params.id, params.large === true)
   })
   p.handle({
     name: 'list',

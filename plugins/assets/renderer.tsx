@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Check, ExternalLink, Package, RotateCw, Search, X } from 'lucide-react'
-import { Select, debugLog, type PanelProps, type RendererPlugin } from '@satura/plugin'
+import { Select, debugLog, isMobileLayout, useMobileBack, type PanelProps, type RendererPlugin } from '@satura/plugin'
 import { RESOLUTIONS, SOURCE_LABEL, type AssetKind, type AssetRow, type AssetSource, type ImportProgress, type ImportResult, type ImportedAsset, type SearchResult } from './shared'
 
 interface ImportState {
@@ -36,6 +36,13 @@ const KINDS: { value: AssetKind | ''; label: string }[] = [
   { value: 'hdri', label: 'HDRIs' }
 ]
 const KIND_WORD: Record<AssetKind, string> = { model: 'Model', material: 'Material', hdri: 'HDRI' }
+const SOURCES: { value: AssetSource | ''; label: string }[] = [
+  { value: '', label: 'All sources' },
+  { value: 'polyhaven', label: 'Poly Haven' },
+  { value: 'ambientcg', label: 'ambientCG' }
+]
+const THUMBS_AT_ONCE = 4
+const THUMBS_KEPT = 400
 
 let plugin: RendererPlugin
 const states = new Map<string, { state: PanelState; listeners: Set<() => void>; seq: number; timer: ReturnType<typeof setTimeout> | null }>()
@@ -93,6 +100,7 @@ async function runSearch(project: string, append = false): Promise<void> {
     debugLog(`[assets] search "${s.query}" kind=${s.kind || 'all'} source=${s.source || 'all'}: ${r.total} hits`)
   } catch (err) {
     if (seq !== e.seq) return
+    console.warn(`[assets] search "${s.query}" failed: ${(err as Error).message}`)
     update(project, { loading: false, more: false, error: (err as Error).message })
   }
 }
@@ -118,6 +126,7 @@ function startImport(project: string, id: string): Promise<ImportResult | null> 
       return result
     },
     (err: Error) => {
+      console.warn(`[assets] import ${id} at ${s.res} failed: ${err.message}`)
       update(project, (cur) => ({ imports: { ...cur.imports, [id]: { stage: 'error', done: 0, total: 0, error: err.message } } }))
       return null
     }
@@ -208,7 +217,88 @@ function Thumb({ row, large = false }: { row: AssetRow; large?: boolean }) {
   )
 }
 
-function Card({ row, selected, imported, job, onPick }: { row: AssetRow; selected: boolean; imported: boolean; job?: ImportState; onPick: () => void }) {
+const thumbs = new Map<string, Promise<string>>()
+const thumbQueue: (() => void)[] = []
+let thumbsLoading = 0
+
+async function oneAtATime<T>(run: () => Promise<T>): Promise<T> {
+  while (thumbsLoading >= THUMBS_AT_ONCE) await new Promise<void>((r) => thumbQueue.push(r))
+  thumbsLoading++
+  try {
+    return await run()
+  } finally {
+    thumbsLoading--
+    thumbQueue.shift()?.()
+  }
+}
+
+function thumbData(project: string, id: string, large: boolean): Promise<string> {
+  const key = large ? `${id} large` : id
+  let got = thumbs.get(key)
+  if (!got) {
+    got = oneAtATime(() => plugin.call<string>('thumb', project, { id, large }))
+    thumbs.set(key, got)
+    got.catch(() => thumbs.delete(key))
+    if (thumbs.size > THUMBS_KEPT) thumbs.delete(thumbs.keys().next().value as string)
+  }
+  return got
+}
+
+function PhoneThumb({ project, row, large = false }: { project: string; row: AssetRow; large?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [src, setSrc] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+  const contain = row.kind === 'model'
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let alive = true
+    let sharp = false
+    const fail = (e: Error): void => {
+      if (!alive || sharp) return
+      console.info(`[assets] preview of ${row.id} failed: ${e.message}`)
+      setFailed(true)
+    }
+    const load = (): void => {
+      thumbData(project, row.id, false).then((d) => alive && !sharp && setSrc(d), fail)
+      if (large)
+        thumbData(project, row.id, true).then((d) => {
+          if (!alive) return
+          sharp = true
+          setFailed(false)
+          setSrc(d)
+        }, () => {})
+    }
+    if (large) {
+      load()
+      return () => {
+        alive = false
+      }
+    }
+    const seen = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((x) => x.isIntersecting)) return
+        seen.disconnect()
+        load()
+      },
+      { rootMargin: '400px 0px' }
+    )
+    seen.observe(el)
+    return () => {
+      alive = false
+      seen.disconnect()
+    }
+  }, [project, row.id, large])
+  return (
+    <div ref={ref} className={`relative overflow-hidden ${large ? 'rounded-xl' : 'rounded-t-[9px]'} aspect-square bg-[radial-gradient(circle_at_50%_40%,#2b2f37,#1d2025_70%)]`}>
+      {!src && !failed && <div className="absolute inset-0 animate-pulse bg-white/[0.03]" />}
+      {src && <img src={src} alt="" draggable={false} data-assets-thumb="loaded" className={`absolute inset-0 h-full w-full ${contain ? 'object-contain p-[6%]' : 'object-cover'}`} />}
+      {failed && !src && <div className="absolute inset-0 flex items-center justify-center text-[12px] text-ink-4">No preview</div>}
+    </div>
+  )
+}
+
+function Card({ row, selected, imported, job, onPick, phone }: { row: AssetRow; selected: boolean; imported: boolean; job?: ImportState; onPick: () => void; phone?: string }) {
   const busy = !!job && job.stage !== 'done' && job.stage !== 'error'
   return (
     <button
@@ -219,7 +309,7 @@ function Card({ row, selected, imported, job, onPick }: { row: AssetRow; selecte
       data-imported={imported ? '' : undefined}
       className={`group flex min-w-0 flex-col rounded-lg bg-panel text-left outline-none ring-1 transition-[box-shadow,transform] duration-100 active:scale-[0.985] ${selected ? 'ring-2 ring-accent' : 'ring-white/[0.06] hover:ring-white/[0.16]'}`}
     >
-      <Thumb row={row} />
+      {phone ? <PhoneThumb project={phone} row={row} /> : <Thumb row={row} />}
       <div className="h-[3px] px-2">{busy && <Bar value={importValue(job)} thin />}</div>
       <div className="flex min-w-0 flex-col gap-0.5 px-2.5 pb-2 pt-1">
         <div className="flex min-w-0 items-center gap-1.5">
@@ -344,7 +434,224 @@ function Details({ project, row, s }: { project: string; row: AssetRow; s: Panel
   )
 }
 
-function AssetsPanel({ projectPath }: PanelProps) {
+function Chip({ active, onClick, children, name, value }: { active: boolean; onClick: () => void; children: ReactNode; name: string; value: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-assets-chip={name}
+      data-value={value}
+      data-active={active ? '' : undefined}
+      className={`h-8 shrink-0 whitespace-nowrap rounded-full px-3.5 text-[13px] font-medium transition-[background-color,color,transform] duration-100 active:scale-[0.96] ${active ? 'bg-accent text-accent-fg' : 'bg-white/[0.07] text-ink-2 active:bg-white/[0.14]'}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function PhoneDetails({ project, row, s }: { project: string; row: AssetRow; s: PanelState }) {
+  const job = s.imports[row.id]
+  const busy = !!job && job.stage !== 'done' && job.stage !== 'error'
+  const importedPath = s.imported[row.id]
+  const result = job?.stage === 'done' ? job.result : undefined
+  const failed = job?.stage === 'error'
+  useMobileBack(() => update(project, { selected: null }), row.name)
+  return (
+    <div className="absolute inset-0 z-10 flex flex-col bg-canvas" data-assets-details={row.id} data-assets-layout="phone">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-3">
+        <div className="mx-auto flex max-w-[440px] flex-col">
+          <div className="overflow-hidden rounded-xl ring-1 ring-white/[0.06]">
+            <PhoneThumb key={row.id} project={project} row={row} large />
+          </div>
+          <span className="mt-4 text-[11px] font-medium uppercase tracking-wider text-ink-3">{KIND_WORD[row.kind]}</span>
+          <h2 className="mt-0.5 text-[19px] font-semibold leading-snug text-ink">{row.name}</h2>
+          <button type="button" onClick={() => plugin.openExternal(row.url)} className="-mx-1 mt-1 flex h-9 items-center gap-1.5 self-start rounded-md px-1 text-[13px] text-ink-3 active:bg-white/[0.08] active:text-ink" data-assets-source-link>
+            {SOURCE_LABEL[row.source]} · CC0
+            <ExternalLink className="h-3.5 w-3.5" />
+          </button>
+          {row.tags.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {row.tags.slice(0, 8).map((t) => (
+                <span key={t} className="rounded-md bg-white/[0.06] px-2 py-1 text-[12px] text-ink-2">
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+          <span className="mt-5 text-[13px] text-ink-2">Resolution</span>
+          <div className="mt-2 grid grid-cols-3 gap-1 rounded-lg bg-sunken p-1 ring-1 ring-inset ring-white/[0.08]" data-assets-segmented="res">
+            {RESOLUTIONS.slice(0, 3).map((r) => (
+              <button
+                key={r}
+                type="button"
+                disabled={busy}
+                onClick={() => update(project, { res: r })}
+                data-value={r}
+                data-active={r === s.res ? '' : undefined}
+                className={`h-10 rounded-md text-[14px] font-semibold transition-[background-color,color,transform] duration-100 active:scale-[0.97] disabled:opacity-50 ${r === s.res ? 'bg-elevated text-ink shadow-sm' : 'text-ink-3 active:bg-white/[0.08]'}`}
+              >
+                {r.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          {row.kind === 'hdri' && (
+            <div className="mt-4 flex min-h-10 items-center">
+              <Toggle checked={s.skybox} onChange={(skybox) => update(project, { skybox })}>
+                <span className="text-[13px]">Use as the open scene's skybox</span>
+              </Toggle>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="shrink-0 border-t border-white/[0.06] bg-canvas px-4 pt-3" style={{ paddingBottom: 'max(12px, calc(var(--safe-bottom, 0px) - var(--remote-bottom, 0px) + 8px))' }}>
+        <div className="mx-auto flex max-w-[440px] flex-col gap-2">
+          {importedPath && !busy && !failed && (
+            <div className="flex flex-col gap-0.5 rounded-lg bg-accent/[0.08] px-3 py-2 text-[12.5px] leading-snug text-ink-2" data-assets-import-state="done">
+              <span className="flex items-center gap-1.5 font-medium text-ink">
+                <Check className="h-4 w-4 shrink-0 text-accent" strokeWidth={2.5} />
+                In the project
+                {result?.tris !== undefined && result.size && <span className="ml-auto truncate pl-2 font-normal text-ink-3">{result.tris.toLocaleString()} tris</span>}
+              </span>
+              <span className="line-clamp-2 break-all font-mono text-[11px] text-ink-3">{importedPath}</span>
+            </div>
+          )}
+          {failed && (
+            <div className="max-h-[30vh] overflow-y-auto rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2.5 text-[12.5px] leading-snug text-red-200" data-assets-import-state="error">
+              {job.error}
+            </div>
+          )}
+          {busy ? (
+            <div className="flex h-12 flex-col justify-center gap-2 rounded-xl bg-white/[0.05] px-4" data-assets-import-state={job.stage}>
+              <span className="truncate text-[13px] tabular-nums text-ink-2">{importLabel(job)}</span>
+              <Bar value={importValue(job)} />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void startImport(project, row.id)}
+              data-assets-import={row.id}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent text-[15px] font-semibold text-accent-fg transition-[filter,transform] duration-100 active:scale-[0.98] active:brightness-90"
+            >
+              {failed || importedPath ? <RotateCw className="h-4 w-4" strokeWidth={2.5} /> : null}
+              {failed ? 'Try again' : importedPath ? `Import again at ${s.res.toUpperCase()}` : `Import at ${s.res.toUpperCase()}`}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PhoneAssets({ projectPath }: PanelProps) {
+  const s = usePanel(projectPath)
+  const inputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (!s.searched && !s.loading) {
+      void runSearch(projectPath)
+      void refreshImported(projectPath)
+    }
+  }, [projectPath])
+  const selected = s.selected ? s.rows.find((r) => r.id === s.selected) ?? null : null
+  const first = !s.searched
+  const pick = (id: string): void => {
+    inputRef.current?.blur()
+    update(projectPath, { selected: id })
+  }
+  return (
+    <div className="@container relative flex h-full min-h-0 flex-col bg-canvas text-ink" data-assets-panel={projectPath} data-assets-layout="phone" data-own-pending>
+      <style>{'@keyframes assets-slide{0%{left:-35%}100%{left:100%}}'}</style>
+      <div className="flex shrink-0 flex-col gap-2 pt-2.5">
+        <form
+          className="px-3"
+          role="search"
+          onSubmit={(e) => {
+            e.preventDefault()
+            inputRef.current?.blur()
+            setFilters(projectPath, {}, false)
+          }}
+        >
+          <label className="relative flex h-10 items-center rounded-lg bg-sunken ring-1 ring-inset ring-white/[0.08] focus-within:ring-accent/60">
+            <Search className="pointer-events-none absolute left-3 h-4 w-4 text-ink-3" />
+            <input
+              ref={inputRef}
+              value={s.query}
+              onChange={(e) => setFilters(projectPath, { query: e.target.value }, true)}
+              placeholder="Search models, materials, skies"
+              type="search"
+              enterKeyHint="search"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              data-assets-search
+              className="h-full w-full appearance-none bg-transparent pl-9 pr-10 text-[16px] text-ink outline-none placeholder:text-ink-4 [&::-webkit-search-cancel-button]:hidden"
+            />
+            {s.query && (
+              <button type="button" onClick={() => setFilters(projectPath, { query: '' }, false)} className="absolute right-1 flex h-8 w-8 items-center justify-center rounded-md text-ink-3 active:bg-white/[0.1] active:text-ink" aria-label="Clear search">
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </label>
+        </form>
+        <div className="flex gap-1.5 overflow-x-auto px-3 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-assets-filters>
+          {KINDS.map((k) => (
+            <Chip key={k.value || 'all'} name="kind" value={k.value || 'all'} active={s.kind === k.value} onClick={() => setFilters(projectPath, { kind: k.value }, false)}>
+              {k.label}
+            </Chip>
+          ))}
+          <span className="mx-1 my-1.5 w-px shrink-0 bg-white/[0.1]" />
+          {SOURCES.map((o) => (
+            <Chip key={o.value || 'all'} name="source" value={o.value || 'all'} active={s.source === o.value} onClick={() => setFilters(projectPath, { source: o.value }, false)}>
+              {o.label}
+            </Chip>
+          ))}
+        </div>
+      </div>
+      <div className="relative h-0.5 shrink-0 overflow-hidden bg-white/[0.06]">{s.loading && <div className="absolute inset-y-0 w-1/3 animate-[assets-slide_1.1s_ease-in-out_infinite] bg-accent" data-assets-loading />}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-assets-grid={s.rows.length}>
+        {s.error ? (
+          <div className="flex min-h-full flex-col items-center justify-center gap-4 px-8 py-10 text-center">
+            <p className="max-w-sm text-[14px] leading-snug text-red-200" data-assets-error>
+              {s.error}
+            </p>
+            <button type="button" onClick={() => void runSearch(projectPath)} className="flex h-11 min-w-[140px] items-center justify-center rounded-xl bg-white/[0.09] px-5 text-[14px] font-medium text-ink active:scale-[0.97] active:bg-white/[0.16]" data-assets-retry>
+              Try again
+            </button>
+          </div>
+        ) : !first && s.rows.length === 0 && !s.loading ? (
+          <div className="flex min-h-full items-center justify-center px-8 py-10 text-center text-[14px] text-ink-3" data-assets-empty>
+            Nothing matches “{s.query}”. Try a broader word.
+          </div>
+        ) : (
+          <div className={`grid grid-cols-2 gap-2.5 p-3 @xl:grid-cols-3 @3xl:grid-cols-4 transition-opacity duration-150 ${s.loading && !first ? 'opacity-60' : ''}`}>
+            {first
+              ? Array.from({ length: 6 }, (_, i) => <SkeletonCard key={i} />)
+              : s.rows.map((row) => (
+                  <Card key={row.id} row={row} selected={false} imported={!!s.imported[row.id] || !!row.imported} job={s.imports[row.id]} onPick={() => pick(row.id)} phone={projectPath} />
+                ))}
+          </div>
+        )}
+        {!first && !s.error && s.rows.length < s.total && (
+          <div className="flex justify-center px-3 pb-3">
+            <button type="button" onClick={() => void runSearch(projectPath, true)} disabled={s.more} className="flex h-11 w-full items-center justify-center rounded-xl bg-white/[0.06] px-4 text-[14px] text-ink-2 active:scale-[0.98] active:bg-white/[0.12] disabled:opacity-70" data-assets-more>
+              {s.more ? <Bar value={null} className="w-24" /> : `Show more (${s.total - s.rows.length})`}
+            </button>
+          </div>
+        )}
+        <div className="flex items-center gap-2 px-3 pt-1 text-[11.5px] text-ink-3" style={{ paddingBottom: 'max(16px, calc(var(--safe-bottom, 0px) - var(--remote-bottom, 0px) + 8px))' }}>
+          <span data-assets-attribution>Assets from Poly Haven and ambientCG, CC0</span>
+          <span className="ml-auto tabular-nums">{s.searched ? `${s.total.toLocaleString()} ${s.total === 1 ? 'result' : 'results'}` : ''}</span>
+        </div>
+      </div>
+      {selected && <PhoneDetails project={projectPath} row={selected} s={s} />}
+    </div>
+  )
+}
+
+function AssetsPanel(props: PanelProps) {
+  return isMobileLayout() ? <PhoneAssets {...props} /> : <DesktopAssets {...props} />
+}
+
+function DesktopAssets({ projectPath }: PanelProps) {
   const s = usePanel(projectPath)
   const inputRef = useRef<HTMLInputElement>(null)
   useEffect(() => {

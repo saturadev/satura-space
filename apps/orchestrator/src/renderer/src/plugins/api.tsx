@@ -4,6 +4,7 @@ import type { HandleParams } from '@shared/app-handles'
 export { Select, type SelectOption } from '../components/ui/Select'
 export { Tooltip } from '../components/ui/Tooltip'
 export { debugLog } from '@shared/debug-log'
+export { isMobileLayout, useMobileBack } from '../lib/mobile/mobile-back'
 
 export interface PanelProps {
   projectPath: string
