@@ -9,6 +9,16 @@ ClipToGame/source/clip.mp4      the original clip
 ClipToGame/source/meta.json     the same facts as data: await clipgame.info()
 ```
 
+## Starting from a link in any project
+
+When the user gives you a video link and `ClipToGame/source/brief.md` doesn't exist yet, fetch it into this project first:
+
+```js
+return await clipgame.fetch('https://www.tiktok.com/@name/video/123')
+```
+
+It downloads the clip with yt-dlp, cuts it into frames and writes `ClipToGame/source/`, then returns `{ title, author, credit, site, duration, width, height, frames, captions, placed }`. Set the satura_exec tool `timeout` to 600 for the first call on a computer, which also sets up the tools. An error says why in words (private video, removed, not a video page, no internet, no Node.js 18+): tell the user and stop. In a project that already has a game, don't touch it: build the new game in its own scene and folder, `Assets/ClipGame/<name>/`, and leave the existing scenes and scripts alone.
+
 ## 1. Understand the clip
 
 Open all frames and read the brief. Work out what is fun about it: the motion, the satisfying moment, the rhythm, the thing a player would want to do. Read any on-screen text from the frames. Nobody transcribed the audio, so captions exist only when the brief lists them.

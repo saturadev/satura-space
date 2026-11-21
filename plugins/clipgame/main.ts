@@ -43,6 +43,10 @@ export default function setup(p: MainPlugin): void {
     return JSON.parse(text)
   }
 
+  p.exec('fetch', (ctx, url) => {
+    if (!ctx.projectRoot) throw new ClipError('There is no project to put the video in.', 'no-project')
+    return fetchClip(ctx, { url })
+  })
   p.exec('info', info)
   p.exec('render', (ctx, options) => render(ctx, options))
 
