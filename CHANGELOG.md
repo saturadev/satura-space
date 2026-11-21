@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.2.2 — 2026-11-22
+
+- **Hot reload works with the live game** — a patched method now reads and writes the running game's static fields and uses its types, so `GetComponent<T>()`, `typeof`, `is` and `as` find live objects instead of missing them. Before, patched code worked on a separate copy of every class, and statics restarted from their defaults. Fields, methods and types added in the edit still run on that copy until you stop and refresh, and the console names each of them once.
+
 ## 3.2.1 — 2026-11-12
 
 - **Plugins on the phone** — Satura Remote opens plugin panels, built-in and the project's own, from New session → Plugins. A project plugin reloads on the phone when its files change.
