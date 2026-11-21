@@ -1,6 +1,7 @@
 import type { HandleParams } from '@shared/app-handles'
 
 export { unzipSync } from 'fflate'
+export { applyCliAugmentedPath, resolveCliCommand } from '../agents/cli-command-resolver'
 
 export interface PluginManifest {
   name: string

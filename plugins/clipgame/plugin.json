@@ -1,0 +1,5 @@
+{
+  "name": "clipgame",
+  "title": "Clip to game",
+  "description": "Turns a short video link (TikTok, Reels, Shorts, X, anything yt-dlp reads) into frames the agent can read, and renders the finished 'clip | gameplay' video with Remotion"
+}

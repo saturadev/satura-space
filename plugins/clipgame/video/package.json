@@ -1,0 +1,12 @@
+{
+  "name": "satura-clipgame-video",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "@remotion/cli": "4.0.487",
+    "@remotion/google-fonts": "4.0.487",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.487"
+  }
+}
