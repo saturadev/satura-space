@@ -24,6 +24,7 @@ import { SquaresBackdrop } from './SquaresBackdrop'
 import { PanelScroll } from './PanelScroll'
 import { pickPath, pickerMemory } from '../../lib/file-picker/file-picker-store'
 import { NewProjectSentence, type NewProjectDraft } from './NewProjectSentence'
+import { CLIP_PROMPT, attachClip, cancelClip, clipLinkProblem, fetchClip, newClipJob, onClipProgress, type ClipProgress } from './clip-link'
 import {
   clearProjectCreationError,
   projectCreationState,
@@ -106,8 +107,10 @@ export function StartScreen() {
   })
   const [editors, setEditors] = useState<UnityEditorForCreate[] | null>(null)
   const [home, setHome] = useState('')
-  const [draft, setDraft] = useState<NewProjectDraft>({ kind: '3d', version: '', parent: '', name: '' })
+  const [draft, setDraft] = useState<NewProjectDraft>({ kind: '3d', version: '', parent: '', name: '', link: '' })
   const [draftProblem, setDraftProblem] = useState<string | null>(null)
+  const [clipPrep, setClipPrep] = useState<{ job: string; progress: ClipProgress } | null>(null)
+  const [clipError, setClipError] = useState<string | null>(null)
   const creation = useProjectCreation()
   const creatingProject = creation.active !== null
   const createError = creation.error
@@ -220,7 +223,7 @@ export function StartScreen() {
       }
       if (!alive) return
       setHome(r.home)
-      setDraft({ kind, version, parent, name })
+      setDraft({ kind, version, parent, name, link: '' })
       setEditors(r.editors)
     })
     return () => {
@@ -242,6 +245,7 @@ export function StartScreen() {
 
   const updateDraft = (patch: Partial<NewProjectDraft>): void => {
     clearProjectCreationError()
+    setClipError(null)
     setDraft((d) => {
       const next = { ...d, ...patch }
       writeNewProjectPrefs({ kind: next.kind, version: next.version })
@@ -353,8 +357,6 @@ export function StartScreen() {
   const life = useUnityLifecycle(mode !== 'create' && isUnityProject ? folder.trim() : null)
   const editorGate = life && (life.phase === 'missing' || life.phase === 'installing') ? life : null
   const selectedEditor = editors?.find((e) => e.version === draft.version)
-  const canCreate =
-    !!selectedEditor && selectedEditor.kinds.includes(draft.kind) && !draftProblem && !creatingProject
   const grid = COUNT_GRID[terminalCount] ?? COUNT_GRID[2]
   const unityGrid = UNITY_COUNT_GRID[terminalCount] ?? grid
 
@@ -378,6 +380,20 @@ export function StartScreen() {
     )
     return prefs.find((id) => availableAgents.includes(id)) ?? availableAgents[0] ?? null
   }, [settings, availableAgents])
+
+  const withVideo = draft.link.trim() !== ''
+  const linkProblem =
+    clipLinkProblem(draft.link) ??
+    (withVideo && detectedAgents !== null && !availableAgents.some((id) => getAgentEntry(id)?.promptArg)
+      ? 'Making a game from a video needs Claude Code, Codex or Cursor. Turn one on in Settings.'
+      : null)
+  const canCreate =
+    !!selectedEditor &&
+    selectedEditor.kinds.includes(draft.kind) &&
+    !draftProblem &&
+    !creatingProject &&
+    !clipPrep &&
+    !linkProblem
 
   useEffect(() => {
     setAgentCounts((prev) => {
@@ -454,7 +470,7 @@ export function StartScreen() {
     setAgentCounts(next)
   }
 
-  const buildTerminalAgents = (): (TerminalAgentLaunch | null)[] | undefined => {
+  const buildTerminalAgents = (prompt?: string): (TerminalAgentLaunch | null)[] | undefined => {
     if (!topAgent) return undefined
     const ids: AgentId[] = []
     for (const id of availableAgents) {
@@ -462,11 +478,20 @@ export function StartScreen() {
       for (let i = 0; i < c && ids.length < terminalCount; i += 1) ids.push(id)
     }
     while (ids.length < terminalCount) ids.push(topAgent)
-    return ids.slice(0, terminalCount).map((id) => {
+    if (prompt && !getAgentEntry(ids[0])?.promptArg) {
+      const at = ids.findIndex((id) => getAgentEntry(id)?.promptArg)
+      const alt = at > 0 ? ids[at] : availableAgents.find((id) => getAgentEntry(id)?.promptArg)
+      if (alt) {
+        if (at > 0) ids[at] = ids[0]
+        ids[0] = alt
+      }
+    }
+    return ids.slice(0, terminalCount).map((id, i) => {
       const entry = getAgentEntry(id)
       if (!entry) return null
+      const first = i === 0 && prompt && entry.promptArg ? ` "${prompt}"` : ''
       return {
-        command: buildAgentLaunchCommand(entry, settings?.agents?.[id]),
+        command: buildAgentLaunchCommand(entry, settings?.agents?.[id]) + first,
         label: entry.label,
         agentId: id
       }
@@ -487,7 +512,8 @@ export function StartScreen() {
 
   const prepareOpen = async (
     folderPath: string | undefined,
-    worktreePath: string | undefined
+    worktreePath: string | undefined,
+    prompt?: string
   ): Promise<(() => void) | null> => {
     const cwd = worktreePath ?? folderPath
     if (cwd) {
@@ -502,7 +528,7 @@ export function StartScreen() {
     }
     const unity = cwd ? await window.api.unity.isProject(cwd) : false
     if (unity && cwd) await window.api.unity.setMode(cwd, unityMode)
-    const terminalAgents = buildTerminalAgents()
+    const terminalAgents = buildTerminalAgents(prompt)
     return unity
       ? () =>
           createWorkspaceWithDefaultView(
@@ -516,14 +542,37 @@ export function StartScreen() {
   }
 
   const createAndLaunch = async (): Promise<void> => {
-    const res = await runProjectCreation({ ...draft, name: draft.name.trim() })
+    const link = draft.link.trim()
+    let job = ''
+    if (link) {
+      job = newClipJob()
+      setClipError(null)
+      setClipPrep({ job, progress: { stage: 'meta', text: 'Reading the link…', percent: null } })
+      const stop = onClipProgress(job, (progress) => setClipPrep({ job, progress }))
+      const got = await fetchClip(link, job).finally(() => {
+        stop()
+        setClipPrep(null)
+      })
+      if (!got.ok) {
+        if (!got.cancelled) setClipError(got.error)
+        return
+      }
+    }
+    const { link: _link, ...args } = draft
+    const res = await runProjectCreation({ ...args, name: draft.name.trim() })
     if (!res.ok) return
+    let prompt: string | undefined
+    if (job) {
+      const placed = await attachClip(res.path, job)
+      if (placed.ok) prompt = CLIP_PROMPT
+      else showDropFeedback(`The video could not be added to the project: ${placed.error}`)
+    }
     setFolder(res.path)
     setMode('open')
     setEditors(null)
     beginWorkspaceOverlay()
     try {
-      settleWorkspaceOverlay((await prepareOpen(res.path, undefined)) ?? undefined)
+      settleWorkspaceOverlay((await prepareOpen(res.path, undefined, prompt)) ?? undefined)
     } catch (e) {
       settleWorkspaceOverlay()
       throw e
@@ -677,7 +726,8 @@ export function StartScreen() {
                 editors={editors}
                 home={home}
                 problem={draftProblem}
-                error={createError}
+                linkProblem={linkProblem}
+                error={createError ?? clipError}
                 onBrowse={() => void browseNewProjectParent()}
               />
             </div>
@@ -1201,15 +1251,17 @@ export function StartScreen() {
             <button
               onClick={() => void launch()}
               disabled={creating || (mode === 'create' && !canCreate)}
-              aria-busy={creating || creatingProject}
+              aria-busy={creating || creatingProject || !!clipPrep}
               className="launch-button flex h-11 w-full items-center justify-center gap-2.5 px-5 text-sm font-semibold tracking-[0.01em]"
             >
-              {creating || creatingProject ? (
+              {creating || creatingProject || clipPrep ? (
                 <>
                   <svg viewBox="0 0 24 24" className="h-4 w-4 animate-spin" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                   </svg>
-                  {creatingProject
+                  {clipPrep
+                    ? 'Preparing the video…'
+                    : creatingProject
                     ? 'Creating project…'
                     : existingMatch
                       ? 'Opening worktree…'
@@ -1220,7 +1272,7 @@ export function StartScreen() {
                   <svg viewBox="0 0 24 24" className="launch-play h-4 w-4" fill="currentColor">
                     <path d="M7 4.5v15l12-7.5z" />
                   </svg>
-                  {mode === 'create' ? 'Create & Launch' : 'Launch'}
+                  {mode === 'create' ? (withVideo ? 'Create from video' : 'Create & Launch') : 'Launch'}
                 </>
               )}
             </button>
@@ -1231,6 +1283,7 @@ export function StartScreen() {
 
       {creating && !existingMatch && <WorktreeCopyOverlay progress={copyProgress} />}
       {removingPath && <WorktreeRemovingOverlay progress={removeProgress} />}
+      {clipPrep && <ClipPrepOverlay progress={clipPrep.progress} onCancel={() => cancelClip(clipPrep.job)} />}
       {creation.active && (
         <ProjectCreateOverlay
           name={creation.active.name}
@@ -1335,6 +1388,38 @@ function StartModeTabs({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+function ClipPrepOverlay({ progress, onCancel }: { progress: ClipProgress; onCancel: () => void }) {
+  const pct = progress.percent ?? 0
+  return (
+    <div className="animate-bfade-in absolute inset-0 z-40 flex flex-col items-center justify-center gap-6 bg-canvas/90 backdrop-blur-sm">
+      <div className="w-full max-w-sm space-y-3 px-8">
+        <p className="text-center text-xs font-medium tracking-wide text-ink-3">Getting the video ready</p>
+        <div className="space-y-1.5">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+            {pct > 0 ? (
+              <div className="h-full rounded-full bg-accent transition-[width] duration-500 ease-out" style={{ width: `${pct}%` }} />
+            ) : (
+              <div className="worktree-copy-indeterminate h-full rounded-full bg-accent" />
+            )}
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-ink-3">
+            <span className="truncate">{progress.text}</span>
+            <span className="shrink-0">The first time sets up the video tools</span>
+          </div>
+        </div>
+        <div className="flex justify-center pt-1">
+          <button
+            onClick={onCancel}
+            className="rounded-md bg-panel px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:bg-elevated hover:text-ink"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
