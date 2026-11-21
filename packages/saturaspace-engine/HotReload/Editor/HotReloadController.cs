@@ -41,6 +41,8 @@ namespace HotReloadPrototype.Editor {
         static volatile bool baselineReady;
         static bool sessionActive;
 
+        static readonly HashSet<string> reportedKept = new HashSet<string>(StringComparer.Ordinal);
+
         static readonly object gate = new object();
         static readonly Dictionary<string, DateTime> pending = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
 
@@ -137,6 +139,7 @@ namespace HotReloadPrototype.Editor {
             baselineText = null;
             baselineReady = false;
             sessionActive = false;
+            reportedKept.Clear();
             lock (gate) pending.Clear();
         }
 
@@ -298,7 +301,25 @@ namespace HotReloadPrototype.Editor {
                 return;
             }
 
-            Assembly patchAsm = Assembly.Load(res.peBytes, res.pdbBytes);
+            byte[] pe = res.peBytes, pdb = res.pdbBytes;
+            PatchRebinder.Output rebind = null;
+            try {
+                rebind = PatchRebinder.Run(pe, pdb, t.live, t.compiler.ReferencePaths, res.changedTypeMetadataNames);
+                pe = rebind.pe;
+                pdb = rebind.pdb;
+            } catch (Exception e) {
+                Debug.LogWarning($"[HotReload] {Path.GetFileName(fullPath)}: could not bind the patch to the running {t.name} — "
+                    + $"patched code will see its own copies of statics and types: {e}");
+            }
+
+            Assembly patchAsm = Assembly.Load(pe, pdb);
+            if (rebind != null) {
+                PatchRebinder.AfterLoad(patchAsm, rebind);
+                var fresh = rebind.keptInPatch.Where(k => reportedKept.Add(k)).ToList();
+                if (fresh.Count > 0)
+                    Debug.LogWarning($"[HotReload] {Path.GetFileName(fullPath)}: not in the running {t.name}, so patched code uses the patch's own copy "
+                        + "(values are not shared with live objects; stop and refresh to add them properly):\n  " + string.Join("\n  ", fresh));
+            }
 
             var skipped = new List<string>();
             var pairs = MethodMatcher.Match(patchAsm, t.live, res.changedTypeMetadataNames, skipped);

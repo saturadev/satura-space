@@ -57,7 +57,7 @@ namespace HotReloadPrototype.Editor {
             return true;
         }
 
-        static string TypeKey(Type t) => t.FullName ?? t.Name;
+        static string TypeKey(Type t) => t.ToString();
 
         static Type SafeGetType(Assembly asm, string metadataName) {
             try { return asm.GetType(metadataName, throwOnError: false); } catch { return null; }

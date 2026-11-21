@@ -32,6 +32,9 @@ namespace HotReloadPrototype.Editor {
         readonly List<ISourceGenerator> generators = new List<ISourceGenerator>();
         readonly object sync = new object();
 
+        public IEnumerable<string> ReferencePaths =>
+            references.OfType<PortableExecutableReference>().Select(r => r.FilePath).Where(p => !string.IsNullOrEmpty(p));
+
         public PatchCompiler(string targetAssemblyName = "Assembly-CSharp") {
             this.targetAssemblyName = targetAssemblyName;
         }
