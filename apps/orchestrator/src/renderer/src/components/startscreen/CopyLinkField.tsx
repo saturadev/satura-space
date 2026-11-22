@@ -2,6 +2,7 @@ import type { NewProjectKind, UnityEditorForCreate } from '@shared/api'
 import type { AgentId } from '@shared/types'
 import { getAgentLabel } from '@shared/agent-catalog'
 import { AgentIcon } from '../../lib/agent-icon'
+import { AgentModelEffort, agentHasModelEffort } from '../AgentModelEffort'
 
 const CHANNEL_RANK: Record<string, number> = { f: 3, p: 2, b: 1, a: 0 }
 
@@ -68,6 +69,11 @@ export function CopyLinkField({
               {getAgentLabel(id)}
             </button>
           ))}
+        </div>
+      )}
+      {agent && agentHasModelEffort(agent) && (
+        <div className="w-full rounded-md bg-canvas p-3">
+          <AgentModelEffort id={agent} />
         </div>
       )}
       <div className="flex min-h-[18px] max-w-full items-center justify-center gap-1.5 text-[11px]">

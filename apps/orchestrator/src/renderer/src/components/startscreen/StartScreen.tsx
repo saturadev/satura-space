@@ -385,7 +385,7 @@ export function StartScreen() {
     return prefs.find((id) => availableAgents.includes(id)) ?? availableAgents[0] ?? null
   }, [settings, availableAgents])
 
-  const copyAgents = useMemo(() => availableAgents.filter((id) => !!getAgentEntry(id)?.promptArg), [availableAgents])
+  const copyAgents = useMemo(() => availableAgents.filter((id) => id === 'claude' && !!getAgentEntry(id)?.promptArg), [availableAgents])
   const copyPick: AgentId | null =
     copyAgent && copyAgents.includes(copyAgent) ? copyAgent : topAgent && copyAgents.includes(topAgent) ? topAgent : (copyAgents[0] ?? null)
   const latestEditor = useMemo(() => latestEditorFor(editors, '3d'), [editors])
@@ -393,7 +393,7 @@ export function StartScreen() {
   const linkProblem =
     clipLinkProblem(copyLink) ??
     (withVideo && detectedAgents !== null && !availableAgents.some((id) => getAgentEntry(id)?.promptArg)
-      ? 'Making a game from a video needs Claude Code, Codex or Cursor. Turn one on in Settings.'
+      ? 'Making a game from a video needs Claude Code. Install it and turn it on in Settings.'
       : null)
   const canCreate =
     !!selectedEditor &&
