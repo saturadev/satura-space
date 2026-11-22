@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.3.0 — 2026-11-22
+
+- **A game from a video** — The start screen has a Copy tab: paste a link, pick Claude Code's model and effort, and that's all. Paste a link to a short video (TikTok, Instagram Reels, YouTube Shorts, X, or any page yt-dlp reads) and Satura Space downloads it, cuts it into frames, creates a project on the newest Unity you have installed and starts your agent on a small game that plays like the clip, with its own names, characters and art. The agent first looks on GitHub for the best open-source solutions to the clip's core mechanic, adapts only permissively licensed ones and credits them. The agent films the gameplay and renders a Remotion video with the clip next to the game, saved as `ClipToGame/clip-vs-game.mp4`. A bad, private or removed link shows the reason in the window and no project is created.
+- **Clip to game plugin** — the built-in `clipgame` plugin does the download, the frames and the render, and adds `clipgame.fetch(url)`, `clipgame.render()` and `clipgame.info()` to `satura_exec` plus a page in the agent guide. In a project you already have, give your agent a link and `clipgame.fetch` brings the clip in, and the game goes into its own `Assets/ClipGame/<name>/` folder. The first use downloads yt-dlp and installs the Remotion tools once per computer; rendering needs Node.js 18 or newer.
+
 ## 3.2.2 — 2026-11-22
 
 - **Hot reload works with the live game** — a patched method now reads and writes the running game's static fields and uses its types, so `GetComponent<T>()`, `typeof`, `is` and `as` find live objects instead of missing them. Before, patched code worked on a separate copy of every class, and statics restarted from their defaults. Fields, methods and types added in the edit still run on that copy until you stop and refresh, and the console names each of them once.
