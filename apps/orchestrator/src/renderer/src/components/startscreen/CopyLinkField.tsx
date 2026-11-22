@@ -1,4 +1,7 @@
 import type { NewProjectKind, UnityEditorForCreate } from '@shared/api'
+import type { AgentId } from '@shared/types'
+import { getAgentLabel } from '@shared/agent-catalog'
+import { AgentIcon } from '../../lib/agent-icon'
 
 const CHANNEL_RANK: Record<string, number> = { f: 3, p: 2, b: 1, a: 0 }
 
@@ -23,12 +26,18 @@ export function CopyLinkField({
   value,
   onChange,
   problem,
-  ready
+  ready,
+  agents,
+  agent,
+  onAgent
 }: {
   value: string
   onChange: (v: string) => void
   problem: string | null
   ready: 'loading' | 'none' | 'ready'
+  agents: AgentId[]
+  agent: AgentId | null
+  onAgent: (id: AgentId) => void
 }) {
   return (
     <div className="flex flex-col items-center gap-3 px-2 pb-1 pt-3">
@@ -43,6 +52,24 @@ export function CopyLinkField({
           problem ? 'border-rose-400/60' : 'border-transparent hover:border-accent/50 focus:border-accent/70'
         }`}
       />
+      {agents.length > 0 && (
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+          <span className="text-xs text-ink-3">Agent</span>
+          {agents.map((id) => (
+            <button
+              key={id}
+              onClick={() => onAgent(id)}
+              aria-pressed={id === agent}
+              className={`flex h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold transition-colors ${
+                id === agent ? 'border-accent/70 bg-accent/15 text-ink' : 'border-transparent bg-canvas text-ink-2 hover:text-ink'
+              }`}
+            >
+              <AgentIcon id={id} className="h-4 w-4" />
+              {getAgentLabel(id)}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex min-h-[18px] max-w-full items-center justify-center gap-1.5 text-[11px]">
         {problem ? (
           <>

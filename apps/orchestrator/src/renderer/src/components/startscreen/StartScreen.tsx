@@ -111,6 +111,7 @@ export function StartScreen() {
   const [home, setHome] = useState('')
   const [draft, setDraft] = useState<NewProjectDraft>({ kind: '3d', version: '', parent: '', name: '' })
   const [copyLink, setCopyLink] = useState('')
+  const [copyAgent, setCopyAgent] = useState<AgentId | null>(null)
   const [draftProblem, setDraftProblem] = useState<string | null>(null)
   const [clipPrep, setClipPrep] = useState<{ job: string; progress: ClipProgress } | null>(null)
   const [clipError, setClipError] = useState<string | null>(null)
@@ -384,6 +385,9 @@ export function StartScreen() {
     return prefs.find((id) => availableAgents.includes(id)) ?? availableAgents[0] ?? null
   }, [settings, availableAgents])
 
+  const copyAgents = useMemo(() => availableAgents.filter((id) => !!getAgentEntry(id)?.promptArg), [availableAgents])
+  const copyPick: AgentId | null =
+    copyAgent && copyAgents.includes(copyAgent) ? copyAgent : topAgent && copyAgents.includes(topAgent) ? topAgent : (copyAgents[0] ?? null)
   const latestEditor = useMemo(() => latestEditorFor(editors, '3d'), [editors])
   const withVideo = copyLink.trim() !== ''
   const linkProblem =
@@ -397,7 +401,7 @@ export function StartScreen() {
     !draftProblem &&
     !creatingProject &&
     !clipPrep
-  const canCopy = !!latestEditor && !!draft.parent && withVideo && !linkProblem && !creatingProject && !clipPrep
+  const canCopy = !!copyPick && !!latestEditor && !!draft.parent && withVideo && !linkProblem && !creatingProject && !clipPrep
 
   useEffect(() => {
     setAgentCounts((prev) => {
@@ -474,7 +478,18 @@ export function StartScreen() {
     setAgentCounts(next)
   }
 
-  const buildTerminalAgents = (prompt?: string): (TerminalAgentLaunch | null)[] | undefined => {
+  const buildTerminalAgents = (prompt?: string, single?: AgentId | null): (TerminalAgentLaunch | null)[] | undefined => {
+    if (single) {
+      const entry = getAgentEntry(single)
+      if (!entry) return undefined
+      return [
+        {
+          command: buildAgentLaunchCommand(entry, settings?.agents?.[single]) + (prompt && entry.promptArg ? ` "${prompt}"` : ''),
+          label: entry.label,
+          agentId: single
+        }
+      ]
+    }
     if (!topAgent) return undefined
     const ids: AgentId[] = []
     for (const id of availableAgents) {
@@ -517,7 +532,8 @@ export function StartScreen() {
   const prepareOpen = async (
     folderPath: string | undefined,
     worktreePath: string | undefined,
-    prompt?: string
+    prompt?: string,
+    single?: AgentId | null
   ): Promise<(() => void) | null> => {
     const cwd = worktreePath ?? folderPath
     if (cwd) {
@@ -532,17 +548,20 @@ export function StartScreen() {
     }
     const unity = cwd ? await window.api.unity.isProject(cwd) : false
     if (unity && cwd) await window.api.unity.setMode(cwd, unityMode)
-    const terminalAgents = buildTerminalAgents(prompt)
+    const terminalAgents = buildTerminalAgents(prompt, single)
+    const one = single ? 1 : terminalCount
+    const gridNow = COUNT_GRID[one] ?? COUNT_GRID[2]
+    const unityGridNow = UNITY_COUNT_GRID[one] ?? gridNow
     return unity
       ? () =>
           createWorkspaceWithDefaultView(
             folderPath,
             worktreePath,
-            unityGrid.rows,
-            unityGrid.cols,
+            unityGridNow.rows,
+            unityGridNow.cols,
             terminalAgents
           )
-      : () => createWorkspaceWithGrid(folderPath, worktreePath, grid.rows, grid.cols, terminalAgents)
+      : () => createWorkspaceWithGrid(folderPath, worktreePath, gridNow.rows, gridNow.cols, terminalAgents)
   }
 
   const createAndLaunch = async (): Promise<void> => {
@@ -584,7 +603,7 @@ export function StartScreen() {
     setEditors(null)
     beginWorkspaceOverlay()
     try {
-      settleWorkspaceOverlay((await prepareOpen(res.path, undefined, prompt)) ?? undefined)
+      settleWorkspaceOverlay((await prepareOpen(res.path, undefined, prompt, fromVideo ? copyPick : null)) ?? undefined)
     } catch (e) {
       settleWorkspaceOverlay()
       throw e
@@ -757,6 +776,9 @@ export function StartScreen() {
                 }}
                 problem={createError ?? clipError ?? linkProblem}
                 ready={editors === null ? 'loading' : latestEditor ? 'ready' : 'none'}
+                agents={copyAgents}
+                agent={copyPick}
+                onAgent={setCopyAgent}
               />
             </div>
           )}
@@ -1022,6 +1044,8 @@ export function StartScreen() {
           </div>
           )}
 
+          {mode !== 'copy' && (
+          <>
           <Foldout
             title="Starting layout"
             icon={
@@ -1265,6 +1289,8 @@ export function StartScreen() {
               </div>
             ))}
           </Foldout>
+          </>
+          )}
 
         </div>
         </PanelScroll>
