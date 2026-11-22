@@ -734,13 +734,13 @@ export function StartScreen() {
             <StartModeTabs mode={mode} onChange={setMode} disabled={creatingProject} />
           </div>
           <h1 className="mb-2 text-3xl font-bold tracking-tight text-ink">
-            {mode === 'create' ? 'New project' : mode === 'copy' ? 'Copy a video' : 'Your workspace'}
+            {mode === 'create' ? 'New project' : mode === 'copy' ? 'Make a game from a video' : 'Your workspace'}
           </h1>
           <p className="text-[15px] text-ink-2">
             {mode === 'create'
               ? 'Unity sets it up first, then it opens here.'
               : mode === 'copy'
-                ? 'Paste a link to a short video and your agent builds a game that plays like it.'
+                ? 'Just paste a video URL and your agent builds a game that plays like it.'
                 : 'Pick a folder to work in and choose how it should open.'}
           </p>
         </div>
@@ -1326,7 +1326,7 @@ export function StartScreen() {
                   <svg viewBox="0 0 24 24" className="launch-play h-4 w-4" fill="currentColor">
                     <path d="M7 4.5v15l12-7.5z" />
                   </svg>
-                  {mode === 'create' ? 'Create & Launch' : mode === 'copy' ? 'Copy the video' : 'Launch'}
+                  {mode === 'create' ? 'Create & Launch' : mode === 'copy' ? 'Make the game' : 'Launch'}
                 </>
               )}
             </button>
