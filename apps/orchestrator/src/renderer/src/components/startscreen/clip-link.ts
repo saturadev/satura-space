@@ -1,5 +1,5 @@
 export const CLIP_PROMPT =
-  'Make a small playable game that plays like the video in ClipToGame/source: the same camera, the same core action, the same threat and mood, with your own names, characters and art. Read ClipToGame/source/brief.md, then follow the guide it names.'
+  'Make a small playable game that plays like the video in ClipToGame/source: the same camera, the same core action, the same threat and mood, with your own names, characters and art. Search GitHub for the best open-source solutions to its core mechanic first and adapt the permissively licensed ones with credit. Read ClipToGame/source/brief.md, then follow the guide it names.'
 
 export interface ClipProgress {
   stage: string

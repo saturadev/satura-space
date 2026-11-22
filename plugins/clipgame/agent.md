@@ -32,7 +32,18 @@ Open every frame in order and read the brief. Before any idea, write `ClipToGame
 
 Nobody transcribed the audio, so captions exist only when the brief lists them.
 
-## 2. Make a game that plays like the clip
+## 2. Look for the best open-source solutions on GitHub
+
+Before you write game code, spend a few searches finding how others solved this clip's core mechanic well: the movement, the physics, the enemy behaviour, the camera, the water or whatever the clip is about. Use `gh search repos "<mechanic> unity" --language "C#" --sort stars --limit 10` when `gh` is installed, otherwise your web search or fetch tools on github.com. Open the two or three best matches, read their README and the scripts that do the core work, and note the technique that fits a small game.
+
+- **Licences.** Adapt code only from repositories under MIT, Apache-2.0, BSD, Unlicense or CC0. No licence, GPL or a custom licence means read it for ideas and write your own version.
+- **Credit.** For anything you adapt, add a line to `Assets/ThirdParty/CREDITS.md` with the repository URL and its licence.
+- **Never.** Don't copy a whole game, any game's assets, or code you can't use. Take techniques, not content.
+- **Keep it short.** A handful of searches, not a research project. If nothing fits, build the mechanic yourself.
+
+Write what you found and what you will use at the end of `ClipToGame/analysis.md`.
+
+## 3. Make a game that plays like the clip
 
 The final video puts the clip beside your gameplay, so viewers compare them at a glance. Copy what the clip's gameplay is, not only its mood.
 
@@ -43,13 +54,13 @@ The final video puts the clip beside your gameplay, so viewers compare them at a
 
 Tell the user the plan in six short lines before you build: camera, what the player does, what threatens them, the place and mood, the goal, and what is your own (name, characters, art). Then build without waiting.
 
-## 3. Build it small
+## 4. Build it small
 
 One scene, the clip's one core verb, a clear goal and a score, restart on fail. No menus and no level list. A viewer must understand it in two seconds of footage. Use primitives, simple shaders and particles; for real-looking props see the Free Assets plugin if it is listed in the guide. Follow the usual rules: Input System only, Satura code inside `#if UNITY_EDITOR && SATURA_SPACE`, don't save unless the user asks.
 
 Make the footage easy to film. Add a `[SaturaHandle]` that starts a run and one that plays it by itself with a simple bot, so the gameplay looks good without a human at the controls. See [handles](handles.md).
 
-## 4. Film the gameplay
+## 5. Film the gameplay
 
 Match the clip's shape: a portrait clip (`height > width` in `meta.json`) wants a portrait game view, so film with `size: '1080x1920'`; a landscape clip, `'1920x1080'`. Check the framing with `unity.screenshot` first, then film 10 to 25 seconds that show the hook in the first two seconds.
 
@@ -65,7 +76,7 @@ return mp4
 
 See [video](video.md). Keep the file inside the project. Before you render, look at four frames of your gameplay beside four frames of the clip. If the camera, the action, the threat or the mood differ, fix the game and film again; do this at least once. Film test takes into `.sspace/videos/`, so `ClipToGame/` ends up with only `source/`, `gameplay.mp4` and the final video.
 
-## 5. Render the final video
+## 6. Render the final video
 
 ```js
 const r = await clipgame.render({ gameplay: 'ClipToGame/gameplay.mp4', title: 'This clip became a game' })
@@ -87,6 +98,6 @@ Set the satura_exec tool `timeout` to 900 for this script: the first render on a
 
 If the call throws a message about Node.js, tell the user to install Node 18 or newer from https://nodejs.org and then call it again; the source frames and your gameplay stay where they are.
 
-## 6. Hand it over
+## 7. Hand it over
 
 Say in a few lines: what the game is, how to play it, the path of the video, and the clip's link and author so the user can credit them when posting. Don't call it a recreation of anything.

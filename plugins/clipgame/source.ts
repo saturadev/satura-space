@@ -221,7 +221,7 @@ function briefText(m: SourceMeta): string {
   } else {
     lines.push('The site published no captions. Nobody transcribed the audio, so read any on-screen text from the frames.')
   }
-  lines.push('', '## Next', '', `Follow ${GUIDE}. Make a game that plays like this clip: the same camera, the same core action, the same threat and mood. Use your own names, characters and art, and never copy another game's assets, even if the clip shows one.`, '')
+  lines.push('', '## Next', '', `Follow ${GUIDE}. Make a game that plays like this clip: the same camera, the same core action, the same threat and mood. Use your own names, characters and art, and never copy another game's assets, even if the clip shows one. Look on GitHub for the best open-source solutions to the core mechanic first.`, '')
   return lines.join('\n')
 }
 
