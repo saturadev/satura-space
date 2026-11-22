@@ -1,6 +1,6 @@
 # Clip to game
 
-The user pasted a link to a short video (TikTok, Reels, Shorts, X, anything) when they made this project. Satura Space already downloaded it and cut it into frames. Your job: build a small, original, playable game inspired by what the clip shows, film it, and render one video with the clip next to the gameplay, ready to post.
+The user pasted a link to a short video (TikTok, Reels, Shorts, X, anything) when they made this project. Satura Space already downloaded it and cut it into frames. Your job: build a small playable game that plays like the clip, with the same camera, the same core action, the same threat and the same mood, and with your own names, characters and art. Then film it and render one video with the clip next to the gameplay, ready to post.
 
 ```
 ClipToGame/source/brief.md      read this first: link, author, length, description, hashtags, captions, the frame list
@@ -19,21 +19,33 @@ return await clipgame.fetch('https://www.tiktok.com/@name/video/123')
 
 It downloads the clip with yt-dlp, cuts it into frames and writes `ClipToGame/source/`, then returns `{ title, author, credit, site, duration, width, height, frames, captions, placed }`. Set the satura_exec tool `timeout` to 600 for the first call on a computer, which also sets up the tools. An error says why in words (private video, removed, not a video page, no internet, no Node.js 18+): tell the user and stop. In a project that already has a game, don't touch it: build the new game in its own scene and folder, `Assets/ClipGame/<name>/`, and leave the existing scenes and scripts alone.
 
-## 1. Understand the clip
+## 1. Describe the clip first
 
-Open all frames and read the brief. Work out what is fun about it: the motion, the satisfying moment, the rhythm, the thing a player would want to do. Read any on-screen text from the frames. Nobody transcribed the audio, so captions exist only when the brief lists them.
+Open every frame in order and read the brief. Before any idea, write `ClipToGame/analysis.md`: plain facts about what the clip shows, in your own words.
 
-## 2. Originality is a hard rule
+- **Camera.** First person, third person, top-down or side view; what moves; portrait or landscape.
+- **What the player does.** The action, verb by verb, in the order it happens: reaches, throws, runs, dodges, stacks, drops.
+- **The opposition.** What chases, blocks, falls or fails, and what makes the moment tense or satisfying.
+- **The place.** The environment, its scale, colours, light and mood: grey and eerie, bright and cartoony, a messy kitchen, a night street.
+- **The goal or the ending**, and any on-screen text. Read it from the frames: the title and hashtags in the brief often name the genre.
+- **The moment people replay.**
 
-- Never recreate a specific existing game: its name, characters, art, music, levels or look, even when the clip shows one. Take only the general mechanic and the feeling, and make everything else your own.
-- Real-life trends, memes, animals, physics and oddly satisfying clips are the best material. Build the toy or the challenge behind them, not a copy of the footage.
-- Don't use the creator's footage, voice, music or likeness inside the game. The clip appears only in the final video, with credit.
+Nobody transcribed the audio, so captions exist only when the brief lists them.
 
-Tell the user the idea in three lines before you build: the game's name, the one thing the player does, and what it borrows from the clip's feeling. Then build without waiting.
+## 2. Make a game that plays like the clip
+
+The final video puts the clip beside your gameplay, so viewers compare them at a glance. Copy what the clip's gameplay is, not only its mood.
+
+- **Keep from the clip:** the camera and perspective, the player's core action and how it feels to control, the threat or challenge and its pace, the kind of place with its mood and light, and the goal or ending. Someone who sees both should say "same kind of game".
+- **Make your own:** the name, every character and creature design, logos, interface art, music, level layouts, models and textures. Build them from primitives, shaders and particles.
+- **Never:** reuse another game's name, characters, art, music or levels, even when the clip shows that game. Take its mechanics and situation, not its content. Don't use the creator's footage, voice, music or likeness inside the game; the clip appears only in the final video, with credit.
+- **Don't drift.** Don't swap the clip's setting for an unrelated cute or colourful theme, don't invent a different verb, and don't soften the mood. A grey, eerie clip gets a grey, eerie game; a chaotic kitchen clip gets a chaotic kitchen.
+
+Tell the user the plan in six short lines before you build: camera, what the player does, what threatens them, the place and mood, the goal, and what is your own (name, characters, art). Then build without waiting.
 
 ## 3. Build it small
 
-One scene, one verb, a clear goal and a score, restart on fail. No menus and no level list. A viewer must understand it in two seconds of footage. Use primitives, simple shaders and particles; for real-looking props see the Free Assets plugin if it is listed in the guide. Follow the usual rules: Input System only, Satura code inside `#if UNITY_EDITOR && SATURA_SPACE`, don't save unless the user asks.
+One scene, the clip's one core verb, a clear goal and a score, restart on fail. No menus and no level list. A viewer must understand it in two seconds of footage. Use primitives, simple shaders and particles; for real-looking props see the Free Assets plugin if it is listed in the guide. Follow the usual rules: Input System only, Satura code inside `#if UNITY_EDITOR && SATURA_SPACE`, don't save unless the user asks.
 
 Make the footage easy to film. Add a `[SaturaHandle]` that starts a run and one that plays it by itself with a simple bot, so the gameplay looks good without a human at the controls. See [handles](handles.md).
 
@@ -51,7 +63,7 @@ await unity.stop()
 return mp4
 ```
 
-See [video](video.md). Keep the file inside the project. Film test takes into `.sspace/videos/`, so `ClipToGame/` ends up with only `source/`, `gameplay.mp4` and the final video.
+See [video](video.md). Keep the file inside the project. Before you render, look at four frames of your gameplay beside four frames of the clip. If the camera, the action, the threat or the mood differ, fix the game and film again; do this at least once. Film test takes into `.sspace/videos/`, so `ClipToGame/` ends up with only `source/`, `gameplay.mp4` and the final video.
 
 ## 5. Render the final video
 

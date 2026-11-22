@@ -172,7 +172,7 @@ async function probe(rem: Remotion, file: string): Promise<Probe> {
 }
 
 async function extractFrames(rem: Remotion, file: string, dir: string, duration: number, report: Report, signal: AbortSignal | undefined): Promise<Frame[]> {
-  const count = Math.max(6, Math.min(16, Math.round(duration)))
+  const count = Math.max(8, Math.min(24, Math.round(duration * 1.5)))
   const frames: Frame[] = []
   for (let i = 0; i < count; i++) {
     const at = Math.round(duration * ((i + 0.5) / count) * 10) / 10
@@ -221,7 +221,7 @@ function briefText(m: SourceMeta): string {
   } else {
     lines.push('The site published no captions. Nobody transcribed the audio, so read any on-screen text from the frames.')
   }
-  lines.push('', '## Next', '', `Follow ${GUIDE}. Do not copy a specific existing game, even if the clip shows one: take only the general mechanic and make it original.`, '')
+  lines.push('', '## Next', '', `Follow ${GUIDE}. Make a game that plays like this clip: the same camera, the same core action, the same threat and mood. Use your own names, characters and art, and never copy another game's assets, even if the clip shows one.`, '')
   return lines.join('\n')
 }
 
