@@ -24,6 +24,7 @@ import { SquaresBackdrop } from './SquaresBackdrop'
 import { PanelScroll } from './PanelScroll'
 import { pickPath, pickerMemory } from '../../lib/file-picker/file-picker-store'
 import { NewProjectSentence, type NewProjectDraft } from './NewProjectSentence'
+import { CopyLinkField, latestEditorFor } from './CopyLinkField'
 import { CLIP_PROMPT, attachClip, cancelClip, clipLinkProblem, fetchClip, newClipJob, onClipProgress, type ClipProgress } from './clip-link'
 import {
   clearProjectCreationError,
@@ -61,8 +62,9 @@ const UNITY_COUNT_GRID: Record<number, { rows: number; cols: number }> = {
 }
 const NEW_PROJECT_KEY = 'satura.newProject'
 const DEFAULT_PROJECT_NAME = 'MyGame'
+const CLIP_PROJECT_NAME = 'ClipGame'
 
-type StartMode = 'open' | 'create'
+type StartMode = 'open' | 'create' | 'copy'
 
 export function StartScreen() {
   const createWorkspaceWithGrid = useAppStore((s) => s.createWorkspaceWithGrid)
@@ -107,7 +109,8 @@ export function StartScreen() {
   })
   const [editors, setEditors] = useState<UnityEditorForCreate[] | null>(null)
   const [home, setHome] = useState('')
-  const [draft, setDraft] = useState<NewProjectDraft>({ kind: '3d', version: '', parent: '', name: '', link: '' })
+  const [draft, setDraft] = useState<NewProjectDraft>({ kind: '3d', version: '', parent: '', name: '' })
+  const [copyLink, setCopyLink] = useState('')
   const [draftProblem, setDraftProblem] = useState<string | null>(null)
   const [clipPrep, setClipPrep] = useState<{ job: string; progress: ClipProgress } | null>(null)
   const [clipError, setClipError] = useState<string | null>(null)
@@ -223,7 +226,7 @@ export function StartScreen() {
       }
       if (!alive) return
       setHome(r.home)
-      setDraft({ kind, version, parent, name, link: '' })
+      setDraft({ kind, version, parent, name })
       setEditors(r.editors)
     })
     return () => {
@@ -353,8 +356,8 @@ export function StartScreen() {
     }
   }
 
-  const unityLayout = mode === 'create' ? true : isUnityProject
-  const life = useUnityLifecycle(mode !== 'create' && isUnityProject ? folder.trim() : null)
+  const unityLayout = mode === 'open' ? isUnityProject : true
+  const life = useUnityLifecycle(mode === 'open' && isUnityProject ? folder.trim() : null)
   const editorGate = life && (life.phase === 'missing' || life.phase === 'installing') ? life : null
   const selectedEditor = editors?.find((e) => e.version === draft.version)
   const grid = COUNT_GRID[terminalCount] ?? COUNT_GRID[2]
@@ -381,9 +384,10 @@ export function StartScreen() {
     return prefs.find((id) => availableAgents.includes(id)) ?? availableAgents[0] ?? null
   }, [settings, availableAgents])
 
-  const withVideo = draft.link.trim() !== ''
+  const latestEditor = useMemo(() => latestEditorFor(editors, '3d'), [editors])
+  const withVideo = copyLink.trim() !== ''
   const linkProblem =
-    clipLinkProblem(draft.link) ??
+    clipLinkProblem(copyLink) ??
     (withVideo && detectedAgents !== null && !availableAgents.some((id) => getAgentEntry(id)?.promptArg)
       ? 'Making a game from a video needs Claude Code, Codex or Cursor. Turn one on in Settings.'
       : null)
@@ -392,8 +396,8 @@ export function StartScreen() {
     selectedEditor.kinds.includes(draft.kind) &&
     !draftProblem &&
     !creatingProject &&
-    !clipPrep &&
-    !linkProblem
+    !clipPrep
+  const canCopy = !!latestEditor && !!draft.parent && withVideo && !linkProblem && !creatingProject && !clipPrep
 
   useEffect(() => {
     setAgentCounts((prev) => {
@@ -542,14 +546,16 @@ export function StartScreen() {
   }
 
   const createAndLaunch = async (): Promise<void> => {
-    const link = draft.link.trim()
+    const fromVideo = mode === 'copy'
     let job = ''
-    if (link) {
+    let args = { ...draft, name: draft.name.trim() }
+    if (fromVideo) {
+      if (!latestEditor) return
       job = newClipJob()
       setClipError(null)
       setClipPrep({ job, progress: { stage: 'meta', text: 'Reading the link…', percent: null } })
       const stop = onClipProgress(job, (progress) => setClipPrep({ job, progress }))
-      const got = await fetchClip(link, job).finally(() => {
+      const got = await fetchClip(copyLink.trim(), job).finally(() => {
         stop()
         setClipPrep(null)
       })
@@ -557,9 +563,15 @@ export function StartScreen() {
         if (!got.cancelled) setClipError(got.error)
         return
       }
+      let name = CLIP_PROJECT_NAME
+      for (let i = 2; i < 50; i += 1) {
+        const taken = (await window.api.unity.checkNewProject(draft.parent, name))?.includes('already exists')
+        if (!taken) break
+        name = `${CLIP_PROJECT_NAME}${i}`
+      }
+      args = { ...draft, kind: '3d', version: latestEditor, name }
     }
-    const { link: _link, ...args } = draft
-    const res = await runProjectCreation({ ...args, name: draft.name.trim() })
+    const res = await runProjectCreation(args)
     if (!res.ok) return
     let prompt: string | undefined
     if (job) {
@@ -580,7 +592,7 @@ export function StartScreen() {
   }
 
   const launch = async (): Promise<void> => {
-    if (mode === 'create') {
+    if (mode !== 'open') {
       await createAndLaunch()
       return
     }
@@ -703,12 +715,14 @@ export function StartScreen() {
             <StartModeTabs mode={mode} onChange={setMode} disabled={creatingProject} />
           </div>
           <h1 className="mb-2 text-3xl font-bold tracking-tight text-ink">
-            {mode === 'create' ? 'New project' : 'Your workspace'}
+            {mode === 'create' ? 'New project' : mode === 'copy' ? 'Copy a video' : 'Your workspace'}
           </h1>
           <p className="text-[15px] text-ink-2">
             {mode === 'create'
               ? 'Unity sets it up first, then it opens here.'
-              : 'Pick a folder to work in and choose how it should open.'}
+              : mode === 'copy'
+                ? 'Paste a link to a short video and your agent builds a game that plays like it.'
+                : 'Pick a folder to work in and choose how it should open.'}
           </p>
         </div>
 
@@ -726,9 +740,23 @@ export function StartScreen() {
                 editors={editors}
                 home={home}
                 problem={draftProblem}
-                linkProblem={linkProblem}
-                error={createError ?? clipError}
+                error={createError}
                 onBrowse={() => void browseNewProjectParent()}
+              />
+            </div>
+          )}
+
+          {mode === 'copy' && (
+            <div className="rounded-lg bg-sunken p-4">
+              <CopyLinkField
+                value={copyLink}
+                onChange={(v) => {
+                  setCopyLink(v)
+                  setClipError(null)
+                  clearProjectCreationError()
+                }}
+                problem={createError ?? clipError ?? linkProblem}
+                ready={editors === null ? 'loading' : latestEditor ? 'ready' : 'none'}
               />
             </div>
           )}
@@ -1246,11 +1274,11 @@ export function StartScreen() {
         <div className="mt-5 w-full shrink-0">
           <div
             className="launch-edge"
-            data-disabled={(mode === 'create' && !canCreate && !creatingProject) || undefined}
+            data-disabled={(((mode === 'create' && !canCreate) || (mode === 'copy' && !canCopy)) && !creatingProject) || undefined}
           >
             <button
               onClick={() => void launch()}
-              disabled={creating || (mode === 'create' && !canCreate)}
+              disabled={creating || (mode === 'create' && !canCreate) || (mode === 'copy' && !canCopy)}
               aria-busy={creating || creatingProject || !!clipPrep}
               className="launch-button flex h-11 w-full items-center justify-center gap-2.5 px-5 text-sm font-semibold tracking-[0.01em]"
             >
@@ -1272,7 +1300,7 @@ export function StartScreen() {
                   <svg viewBox="0 0 24 24" className="launch-play h-4 w-4" fill="currentColor">
                     <path d="M7 4.5v15l12-7.5z" />
                   </svg>
-                  {mode === 'create' ? (withVideo ? 'Create from video' : 'Create & Launch') : 'Launch'}
+                  {mode === 'create' ? 'Create & Launch' : mode === 'copy' ? 'Copy the video' : 'Launch'}
                 </>
               )}
             </button>
@@ -1367,7 +1395,8 @@ function StartModeTabs({
 }) {
   const tabs: { id: StartMode; label: string }[] = [
     { id: 'open', label: 'Open' },
-    { id: 'create', label: 'Create' }
+    { id: 'create', label: 'Create' },
+    { id: 'copy', label: 'Copy' }
   ]
   return (
     <div role="tablist" className="pointer-events-auto flex gap-0.5 rounded-full bg-panel p-[3px]">

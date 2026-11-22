@@ -7,7 +7,6 @@ export interface NewProjectDraft {
   version: string
   parent: string
   name: string
-  link: string
 }
 
 const KIND_OPTIONS: { id: NewProjectKind; label: string; hint: string }[] = [
@@ -21,7 +20,6 @@ export function NewProjectSentence({
   editors,
   home,
   problem,
-  linkProblem,
   error,
   onBrowse
 }: {
@@ -30,7 +28,6 @@ export function NewProjectSentence({
   editors: UnityEditorForCreate[] | null
   home: string
   problem: string | null
-  linkProblem: string | null
   error: string | null
   onBrowse: () => void
 }) {
@@ -67,8 +64,7 @@ export function NewProjectSentence({
     error ??
     (kindMissing
       ? `Unity ${draft.version} has no ${draft.kind.toUpperCase()} URP template. Pick another version.`
-      : (problem ?? linkProblem))
-  const withVideo = draft.link.trim() !== '' && !linkProblem
+      : problem)
 
   return (
     <div className="flex flex-col items-center px-2 pb-1 pt-3">
@@ -161,32 +157,17 @@ export function NewProjectSentence({
             <span className="truncate">{shortPath(draft.parent, home)}</span>
           </button>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-2">
-          <span>inspired by</span>
-          <LinkInput value={draft.link} onChange={(link) => onChange({ link })} invalid={!!linkProblem && !error} />
-        </div>
       </div>
 
       <div className="mt-4 flex min-h-[18px] max-w-full items-center justify-center gap-1.5 text-[11px]">
         {message ? (
-          <>
-            <span className="whitespace-pre-wrap text-center leading-snug text-rose-300">{message}</span>
-            {message.includes('nodejs.org') && (
-              <button
-                onClick={() => void window.api.shell.openExternal('https://nodejs.org')}
-                className="shrink-0 rounded-md bg-panel px-2 py-1 text-[11px] font-medium text-ink-2 transition-colors hover:bg-elevated hover:text-ink"
-              >
-                Get Node.js
-              </button>
-            )}
-          </>
+          <span className="whitespace-pre-wrap text-center leading-snug text-rose-300">{message}</span>
         ) : (
           <>
             <span className="shrink-0 text-ink-3">Creates</span>
             <span className="truncate font-mono text-ink-2" title={target}>
               {target}
             </span>
-            {withVideo && <span className="shrink-0 text-ink-3">and builds a game from the video</span>}
           </>
         )}
       </div>
@@ -321,21 +302,6 @@ function NameInput({
       title="Project name"
       style={{ width: `${Math.max(6, Math.min(24, value.length || 6)) + 2.5}ch` }}
       className={`h-[38px] rounded-lg border bg-canvas px-2.5 text-center font-mono text-[15px] font-medium text-ink outline-none transition-colors placeholder:text-ink-4 ${
-        invalid ? 'border-rose-400/60' : 'border-transparent hover:border-accent/50 focus:border-accent/70'
-      }`}
-    />
-  )
-}
-
-function LinkInput({ value, onChange, invalid }: { value: string; onChange: (v: string) => void; invalid: boolean }) {
-  return (
-    <input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      spellCheck={false}
-      placeholder="Paste a video link (optional)"
-      title="Link to a short video: TikTok, Instagram Reels, YouTube Shorts, X, or any video page"
-      className={`h-[38px] w-[17rem] max-w-full rounded-lg border bg-canvas px-2.5 font-mono text-[15px] font-medium text-ink outline-none transition-colors placeholder:text-ink-4 ${
         invalid ? 'border-rose-400/60' : 'border-transparent hover:border-accent/50 focus:border-accent/70'
       }`}
     />
