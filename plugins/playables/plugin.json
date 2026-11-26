@@ -1,0 +1,5 @@
+{
+  "name": "playables",
+  "title": "Playables",
+  "description": "Turns a Unity scene into a playable ad: one HTML file with a small JS runtime and the game scripts written in JS, sized for the ad budget, checked against Unity with a seeded run and packaged for each ad network"
+}
