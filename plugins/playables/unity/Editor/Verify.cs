@@ -54,7 +54,7 @@ namespace SaturaSpace.Playables
     {
         public VerifyRun[] runs = Array.Empty<VerifyRun>();
         public VerifyProbe[] probes = Array.Empty<VerifyProbe>();
-        public VerifySettle settle;
+        public VerifySettle[] settle = Array.Empty<VerifySettle>();
         public int settleMax = 600;
         public int finalWait = 360;
         public int fps = 60;
@@ -202,7 +202,7 @@ namespace SaturaSpace.Playables
             {
                 _waited++;
                 _calm = Settled() ? _calm + 1 : 0;
-                int need = script.settle != null && !string.IsNullOrEmpty(script.settle.type) ? Mathf.Max(1, script.settle.frames) : 1;
+                int need = SettleFrames();
                 if (_calm < need && _waited < script.settleMax) return;
                 Snapshot(_waited >= script.settleMax && _calm < need);
                 VerifyRun run = script.runs[_run];
@@ -367,18 +367,31 @@ namespace SaturaSpace.Playables
 
         private bool Settled()
         {
-            VerifySettle settle = script.settle;
-            if (settle == null || string.IsNullOrEmpty(settle.type)) return true;
-            Type type = Probes.FindType(settle.type);
-            if (type == null) return true;
-            foreach (UnityEngine.Object obj in FindObjectsByType(type, FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            foreach (VerifySettle settle in script.settle ?? Array.Empty<VerifySettle>())
             {
-                object value = Probes.Member(obj, settle.member);
-                string text = value == null ? "null" : Convert.ToString(value, CultureInfo.InvariantCulture);
-                if (!string.Equals(text, settle.equals, StringComparison.OrdinalIgnoreCase)) return false;
+                if (settle == null || string.IsNullOrEmpty(settle.type)) continue;
+                Type type = Probes.FindType(settle.type);
+                if (type == null) continue;
+                foreach (UnityEngine.Object obj in FindObjectsByType(type, FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                {
+                    object value = Probes.Member(obj, settle.member);
+                    string text = value == null ? "null" : Convert.ToString(value, CultureInfo.InvariantCulture);
+                    if (!string.Equals(text, settle.equals, StringComparison.OrdinalIgnoreCase)) return false;
+                }
             }
 
             return true;
+        }
+
+        private int SettleFrames()
+        {
+            int need = 1;
+            foreach (VerifySettle settle in script.settle ?? Array.Empty<VerifySettle>())
+            {
+                if (settle != null && !string.IsNullOrEmpty(settle.type)) need = Mathf.Max(need, settle.frames);
+            }
+
+            return need;
         }
 
         private void Snapshot(bool timedOut)

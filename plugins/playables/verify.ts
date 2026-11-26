@@ -8,7 +8,7 @@ import { inside, layout, PlayableError, rel, type Layout } from './project'
 export interface VerifyScript {
   runs: { scene: string; scenePath?: string; seed: number; steps?: unknown[] }[]
   probes?: { type: string; members?: string[]; inactive?: boolean }[]
-  settle?: { type: string; member: string; equals: string; frames?: number }
+  settle?: { type: string; member: string; equals: string; frames?: number } | { type: string; member: string; equals: string; frames?: number }[]
   settleMax?: number
   finalWait?: number
   fps?: number
@@ -56,6 +56,7 @@ export async function loadScript(lay: Layout, scriptRel: string): Promise<{ scri
     if (!run.scenePath) throw new PlayableError(`Run scene ${run.scene} is not one of the exported scenes.`, 'script')
     run.steps ??= []
   }
+  if (script.settle && !Array.isArray(script.settle)) script.settle = [script.settle]
   const hash = createHash('sha256').update(JSON.stringify(script)).digest('hex').slice(0, 12)
   return { script, name: basename(scriptRel).replace(/\.json$/, ''), hash }
 }

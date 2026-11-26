@@ -132,14 +132,20 @@ function expand(step) {
   return timeline;
 }
 
+function settleList(settle) {
+  if (!settle) return [];
+  return (Array.isArray(settle) ? settle : [settle]).filter((item) => item && item.type);
+}
+
 function settled(settle) {
-  if (!settle || !settle.type) return true;
-  const type = lookupComponentType(settle.type);
-  if (!type) return true;
-  for (const component of FindObjectsOfType(type)) {
-    const value = ProbeMember(component, settle.member);
-    const text = value === null || value === undefined ? 'null' : String(value);
-    if (text.toLowerCase() !== String(settle.equals).toLowerCase()) return false;
+  for (const condition of settleList(settle)) {
+    const type = lookupComponentType(condition.type);
+    if (!type) continue;
+    for (const component of FindObjectsOfType(type)) {
+      const value = ProbeMember(component, condition.member);
+      const text = value === null || value === undefined ? 'null' : String(value);
+      if (text.toLowerCase() !== String(condition.equals).toLowerCase()) return false;
+    }
   }
   return true;
 }
@@ -171,7 +177,7 @@ export class VerifySession {
     this.delta = 1 / (script.fps || 60);
     this.settleMax = script.settleMax || 600;
     this.finalWait = script.finalWait === undefined ? 360 : script.finalWait;
-    this.need = script.settle && script.settle.type ? Math.max(1, script.settle.frames || 2) : 1;
+    this.need = settleList(script.settle).reduce((n, item) => Math.max(n, item.frames || 1), 1);
     this.runs = [];
     this.input = [];
     this.error = null;
