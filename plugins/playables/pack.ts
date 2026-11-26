@@ -141,6 +141,36 @@ const toolEncoder: Encoder = async (file, ctx) => {
   return { bytes: Buffer.from(r.data, 'base64'), mime: r.mime, ...(r.note ? { note: r.note } : {}) }
 }
 
+const PHYSICS_TYPES = /^UnityEngine\.(Rigidbody|BoxCollider|SphereCollider|CapsuleCollider|MeshCollider|EventSystems\.PhysicsRaycaster)$/
+
+interface DumpNode {
+  components?: { type: string }[]
+  children?: DumpNode[]
+}
+
+function componentTypes(data: Record<string, any>): Set<string> {
+  const types = new Set<string>()
+  const walk = (node: DumpNode): void => {
+    for (const c of node.components ?? []) types.add(c.type)
+    for (const child of node.children ?? []) walk(child)
+  }
+  const units = [...Object.values(data.scenes ?? {}), ...Object.values(data.prefabs ?? {})] as { roots?: DumpNode[] }[]
+  for (const unit of units) for (const root of unit.roots ?? []) walk(root)
+  return types
+}
+
+export function optionalModules(data: Record<string, any>, config: PlayableConfig): string[] {
+  const tables = data.tables ?? {}
+  const types = componentTypes(data)
+  const out: string[] = []
+  const has = (re: RegExp): boolean => [...types].some((t) => re.test(t))
+  if (tables.meshes || has(/^UnityEngine\.(MeshRenderer|SkinnedMeshRenderer|MeshFilter|Light)$/)) out.push('gl.js')
+  if (has(PHYSICS_TYPES)) out.push('physics.js')
+  if (tables.audio || has(/^UnityEngine\.AudioSource$/)) out.push('audio.js')
+  for (const name of (config.runtime as { include?: string[] } | undefined)?.include ?? []) if (!out.includes(name)) out.push(name)
+  return out
+}
+
 export async function buildParts(p: MainPlugin, lay: Layout, log: (line: string) => void): Promise<{ parts: PackParts; rows: SizeRow[]; scripts: { file: string; bytes: number }[]; warnings: string[] }> {
   const config = lay.config
   const text = await readFile(join(lay.build, 'scene.json'), 'utf8').catch(() => null)
@@ -209,7 +239,8 @@ export async function buildParts(p: MainPlugin, lay: Layout, log: (line: string)
   }
   const entry = inside(lay.dir, config.entry || 'game/main.js')
   const sources = await runtimeSources(p.sourceDir)
-  const b = await bundle(entry, lay.dir, sources)
+  const optional = optionalModules(data, config)
+  const b = await bundle(entry, lay.dir, sources, optional)
   const sceneBytes = Buffer.byteLength(JSON.stringify(data))
   rows.push({ name: 'scene.json', kind: 'scene', source: config.scenes.join(', '), raw: Buffer.byteLength(text), packed: sceneBytes, mime: 'application/json' })
   const runtimeUsed = b.files.filter((f) => f.file.startsWith('runtime/')).reduce((n, f) => n + f.bytes, 0)

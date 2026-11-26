@@ -30,10 +30,12 @@ export const Playable = {
   lastTime: 0,
   frames: 0,
   errors: [],
+  preloads: [],
   engine: Engine,
   assets: Assets,
   scenes: SceneManager,
   ad: Ad,
+  audio: null,
   time: Time,
   random: Random,
 
@@ -49,6 +51,7 @@ export const Playable = {
       await withDeadline(Promise.all(data.fonts.map((font, index) => (font.file ? document.fonts.load('32px "pf' + index + '"') : null))), 1500);
     }
 
+    for (const preload of this.preloads) await preload(payload);
     this.renderer = new CanvasRenderer2D(this.canvas, images, {
       background: (this.config.stage && this.config.stage.background) || '#000',
       sortingLayers: data.sortingLayers,
@@ -62,6 +65,7 @@ export const Playable = {
     window.addEventListener('resize', () => this.resize());
     this.bindPointer();
     Ad.init(this);
+    if (this.audio) this.audio.init(this.config.audio);
 
     const query = new URLSearchParams(window.location.search);
     if (query.has('seed')) this.seed = Number(query.get('seed')) >>> 0;
@@ -73,7 +77,8 @@ export const Playable = {
   start() {
     if (this.started) return;
     this.started = true;
-    SceneManager.loadNow(this.config.startScene);
+    const asked = new URLSearchParams(window.location.search).get('scene');
+    SceneManager.loadNow(asked && Assets.data.scenes[asked] ? asked : this.config.startScene);
     this.lastTime = performance.now();
     const tick = (now) => {
       requestAnimationFrame(tick);
@@ -182,10 +187,12 @@ export const Playable = {
 
   pause() {
     this.paused = true;
+    if (this.audio) this.audio.hold('pause');
   },
 
   resume() {
     this.paused = false;
+    if (this.audio) this.audio.release('pause');
     this.lastTime = performance.now();
   },
 

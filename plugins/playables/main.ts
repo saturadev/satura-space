@@ -90,11 +90,16 @@ export default function setup(p: MainPlugin): void {
     const [w, h] = String(o.size || '540x960').split('x').map(Number)
     const scale = Number(o.scale ?? 2)
     const times = (list(o.at) ?? ['0.5', '2', '5']).map(Number).filter((t) => t >= 0).sort((a, b) => a - b)
-    const dir = join(lay.out, 'preview')
+    let script: unknown = { runs: [{ scene: o.scene ? String(o.scene) : lay.config.startScene, seed: Number(o.seed || lay.config.seed || 1), steps: [] }], probes: [], finalWait: 1e9, settleMax: 1 }
+    let name = o.scene ? String(o.scene) : 'start'
+    if (o.script) {
+      const loaded = await loadScript(lay, String(o.script))
+      script = loaded.script
+      name = loaded.name
+    }
+    const dir = join(lay.out, 'preview', name.replace(/[^A-Za-z0-9_-]+/g, '_'))
     await rm(dir, { recursive: true, force: true })
     await mkdir(dir, { recursive: true })
-    let script: unknown = { runs: [{ scene: lay.config.startScene, seed: Number(o.seed ?? lay.config.seed ?? 1), steps: [] }], probes: [], finalWait: 1e9, settleMax: 1 }
-    if (o.script) script = (await loadScript(lay, String(o.script))).script
     const page = await p.page({ width: w || 540, height: h || 960, scale })
     try {
       await page.load(html)
@@ -198,8 +203,8 @@ export default function setup(p: MainPlugin): void {
   p.handle({
     name: 'preview',
     long: true,
-    description: 'Opens the packed playable in a hidden page at size (CSS pixels, default 540x960) and scale, steps it frame by frame on the game clock, optionally playing a verify script, and saves screenshots at the times in at (seconds) to Playable/out/preview/. Returns the shots, end card state, console errors and network requests.',
-    params: { size: '540x960', scale: 2, at: '0.5,2,5', seed: '', script: '' },
+    description: 'Opens the packed playable in a hidden page at size (CSS pixels, default 540x960) and scale, steps it frame by frame on the game clock, starting in scene (default the start scene) or playing a verify script, and saves screenshots at the times in at (seconds) to Playable/out/preview/<scene or script>/. Returns the shots, end card state, console errors and network requests.',
+    params: { size: '540x960', scale: 2, at: '0.5,2,5', seed: '', scene: '', script: '' },
     run: (params, ctx) => preview(ctx, params)
   })
   p.handle({

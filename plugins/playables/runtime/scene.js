@@ -295,6 +295,15 @@ export const SceneManager = {
   },
 
   loadNow(name) {
+    Engine.loading = true;
+    try {
+      return this.loadScene(name);
+    } finally {
+      Engine.loading = false;
+    }
+  },
+
+  loadScene(name) {
     const sceneData = Assets.data.scenes[name];
     if (!sceneData) {
       if (this.onMissingScene) this.onMissingScene(name);

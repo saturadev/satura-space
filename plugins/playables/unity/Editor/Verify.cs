@@ -9,6 +9,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.LowLevel;
 using UnityEngine.SceneManagement;
 
 namespace SaturaSpace.Playables
@@ -81,8 +82,7 @@ namespace SaturaSpace.Playables
         public override string compositionString => "";
     }
 
-    [DefaultExecutionOrder(-32000)]
-    public class VerifyDriver : MonoBehaviour
+    public class VerifyDriver
     {
         private enum Phase
         {
@@ -118,19 +118,44 @@ namespace SaturaSpace.Playables
         private readonly List<object> _log = new List<object>();
         private double _deadline;
 
-        private void Start()
+        private struct LoopMarker
         {
-            DontDestroyOnLoad(gameObject);
+        }
+
+        public void Begin()
+        {
             Application.runInBackground = true;
+            Hook(true);
             Time.captureDeltaTime = 1f / Mathf.Max(1, script.fps);
             _deadline = EditorApplication.timeSinceStartup + script.deadline;
             SceneManager.sceneLoaded += OnLoaded;
             NextRun();
         }
 
-        private void OnDestroy()
+        internal static void Detach()
         {
-            SceneManager.sceneLoaded -= OnLoaded;
+            Hook(null);
+        }
+
+        private void Hook(bool on)
+        {
+            Hook(on ? this : null);
+            if (!on) SceneManager.sceneLoaded -= OnLoaded;
+        }
+
+        private static void Hook(VerifyDriver driver)
+        {
+            PlayerLoopSystem root = PlayerLoop.GetCurrentPlayerLoop();
+            for (int i = 0; i < root.subSystemList.Length; i++)
+            {
+                if (root.subSystemList[i].type != typeof(UnityEngine.PlayerLoop.Update)) continue;
+                var list = new List<PlayerLoopSystem>(root.subSystemList[i].subSystemList ?? Array.Empty<PlayerLoopSystem>());
+                list.RemoveAll(s => s.type == typeof(LoopMarker));
+                if (driver != null) list.Insert(0, new PlayerLoopSystem {type = typeof(LoopMarker), updateDelegate = driver.Update});
+                root.subSystemList[i].subSystemList = list.ToArray();
+            }
+
+            PlayerLoop.SetPlayerLoop(root);
         }
 
         private void OnLoaded(Scene scene, LoadSceneMode mode)
@@ -250,7 +275,7 @@ namespace SaturaSpace.Playables
 
         private void EnsureInput()
         {
-            EventSystem system = EventSystem.current != null ? EventSystem.current : FindFirstObjectByType<EventSystem>();
+            EventSystem system = EventSystem.current != null ? EventSystem.current : UnityEngine.Object.FindFirstObjectByType<EventSystem>();
             if (system == null) return;
             var module = system.GetComponent<StandaloneInputModule>();
             foreach (BaseInputModule other in system.GetComponents<BaseInputModule>())
@@ -260,7 +285,6 @@ namespace SaturaSpace.Playables
 
             if (module == null) module = system.gameObject.AddComponent<StandaloneInputModule>();
             module.enabled = true;
-            module.forceModuleActive = true;
             _input = system.GetComponent<ScriptedInput>();
             if (_input == null) _input = system.gameObject.AddComponent<ScriptedInput>();
             module.inputOverride = _input;
@@ -372,7 +396,7 @@ namespace SaturaSpace.Playables
                 if (settle == null || string.IsNullOrEmpty(settle.type)) continue;
                 Type type = Probes.FindType(settle.type);
                 if (type == null) continue;
-                foreach (UnityEngine.Object obj in FindObjectsByType(type, FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                foreach (UnityEngine.Object obj in UnityEngine.Object.FindObjectsByType(type, FindObjectsInactive.Exclude, FindObjectsSortMode.None))
                 {
                     object value = Probes.Member(obj, settle.member);
                     string text = value == null ? "null" : Convert.ToString(value, CultureInfo.InvariantCulture);
@@ -409,6 +433,7 @@ namespace SaturaSpace.Playables
         private void Finish(int code, string error)
         {
             _phase = Phase.Done;
+            Hook(false);
             Time.captureDeltaTime = 0;
             var root = new Node
             {
@@ -655,6 +680,7 @@ namespace SaturaSpace.Playables
         {
             if (change == PlayModeStateChange.EnteredEditMode)
             {
+                VerifyDriver.Detach();
                 if (SessionState.GetString(ScriptKey, "") != "") RestoreStartScene();
                 SessionState.EraseString(ScriptKey);
                 SessionState.SetBool(ActiveKey, false);
@@ -665,10 +691,8 @@ namespace SaturaSpace.Playables
             try
             {
                 var script = JsonUtility.FromJson<VerifyScript>(File.ReadAllText(SessionState.GetString(ScriptKey, "")));
-                var host = new GameObject("PlayablesVerify") {hideFlags = HideFlags.HideAndDontSave};
-                var driver = host.AddComponent<VerifyDriver>();
-                driver.script = script;
-                driver.outPath = SessionState.GetString(OutKey, "");
+                var driver = new VerifyDriver {script = script, outPath = SessionState.GetString(OutKey, "")};
+                driver.Begin();
             }
             catch (Exception e)
             {

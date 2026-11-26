@@ -1,4 +1,4 @@
-import { Vector2, Vector3, Vector4, Quaternion, Color, Random, Time } from './core.js';
+import { Vector2, Vector3, Vector4, Quaternion, Color, Random, Time, Screen } from './core.js';
 import { Engine, FindObjectsOfType, GameObject, Component, UnityObject, RectTransform } from './object.js';
 import { Camera, lookupComponentType } from './components.js';
 import { Canvas, PointerInput } from './ui.js';
@@ -185,6 +185,10 @@ export class VerifySession {
     this.run = -1;
     this.wasPaused = playable.paused;
     playable.pause();
+    if (script.screen && playable.canvas) {
+      playable.canvas.width = Screen.width = script.screen[0];
+      playable.canvas.height = Screen.height = script.screen[1];
+    }
     this.nextRun();
   }
 
@@ -217,6 +221,7 @@ export class VerifySession {
     if (this.done) return false;
     try {
       this.frame++;
+      for (const hook of Engine.early) hook(this.delta);
       const run = this.script.runs[this.run];
       let entered = false;
       if (this.phase === 'settle') {

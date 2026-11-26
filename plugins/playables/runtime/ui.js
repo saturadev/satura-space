@@ -565,8 +565,12 @@ function raycastColliders(x, y) {
   return null;
 }
 
+export const WorldRaycasters = [];
+
 export function RaycastScreen(x, y) {
-  return raycastGraphics(x, y) || raycastColliders(x, y);
+  let hit = raycastGraphics(x, y) || raycastColliders(x, y);
+  for (let i = 0; i < WorldRaycasters.length && !hit; i++) hit = WorldRaycasters[i](x, y);
+  return hit;
 }
 
 function executeOn(gameObject, method, eventData) {
@@ -681,7 +685,7 @@ function processPointer(event) {
 
   if (event.type === 'move') {
     handleEnterExit(state, hit);
-    if (state._down && state.pointerDrag) {
+    if (state._down && state.pointerDrag && (state.delta.x !== 0 || state.delta.y !== 0)) {
       const threshold = EventSystem.current ? EventSystem.current.pixelDragThreshold : 10;
       if (!state.dragging && Vector2.Distance(state.pressPosition, position) >= threshold) {
         executeOn(state.pointerDrag, 'OnBeginDrag', state);
@@ -733,7 +737,6 @@ class IgnoredBehaviour extends Behaviour {
 
 export class StandaloneInputModule extends IgnoredBehaviour {}
 export class InputSystemUIInputModule extends IgnoredBehaviour {}
-export class AudioListener extends IgnoredBehaviour {}
 export class FlareLayer extends IgnoredBehaviour {}
 
 registerComponentType('UnityEngine.RectTransform', RectTransform);
@@ -749,5 +752,4 @@ registerComponentType('UnityEngine.EventSystems.EventSystem', EventSystem);
 registerComponentType('UnityEngine.EventSystems.Physics2DRaycaster', Physics2DRaycaster);
 registerComponentType('UnityEngine.EventSystems.StandaloneInputModule', StandaloneInputModule);
 registerComponentType('UnityEngine.InputSystem.UI.InputSystemUIInputModule', InputSystemUIInputModule);
-registerComponentType('UnityEngine.AudioListener', AudioListener);
 registerComponentType('UnityEngine.FlareLayer', FlareLayer);

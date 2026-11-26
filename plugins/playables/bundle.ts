@@ -36,7 +36,7 @@ export function runtimeBytes(runtime: Record<string, string> = RUNTIME): number 
   return Object.values(runtime).reduce((n, s) => n + Buffer.byteLength(s), 0)
 }
 
-export async function bundle(entry: string, base: string, runtime: Record<string, string> = RUNTIME): Promise<BundleResult> {
+export async function bundle(entry: string, base: string, runtime: Record<string, string> = RUNTIME, extra: string[] = []): Promise<BundleResult> {
   const modules: string[] = []
   const files: { file: string; bytes: number }[] = []
   const seen = new Set<string>()
@@ -83,6 +83,7 @@ export async function bundle(entry: string, base: string, runtime: Record<string
   }
 
   await visit(VIRTUAL + 'index.js')
+  for (const name of extra) if (runtime[name] !== undefined) await visit(VIRTUAL + name)
   await visit(entry)
   const code = modules
     .join('\n')

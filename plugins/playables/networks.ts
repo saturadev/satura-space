@@ -19,11 +19,13 @@ export interface NetworkSpec {
 
 const MB = 1024 * 1024
 
+const mintegralName = (lay: Layout): string => `${lay.config.name.replace(/[^A-Za-z0-9]+/g, '_')}_mintegral`
+
 export const NETWORKS: NetworkSpec[] = [
   { id: 'applovin', title: 'AppLovin', format: 'html', limit: 5 * MB, mraid: true, cta: 'mraid.open', notes: 'One HTML file, everything inlined, MRAID 2.0, no store redirect on the first tap.' },
   { id: 'unity', title: 'Unity Ads', format: 'html', limit: 5 * MB, mraid: true, cta: 'mraid.open', notes: 'One minified index.html under 5 MB, MRAID 3.0 injected by the webview (no mraid.js tag), starts on viewableChange, redirect only after a tap.' },
   { id: 'ironsource', title: 'ironSource', format: 'html', limit: 4 * MB, mraid: true, cta: 'mraid.open', notes: 'One HTML file, MRAID 2.0, waits for ready; no DAPI; assets and code up to 4 MB.' },
-  { id: 'mintegral', title: 'Mintegral', format: 'zip', limit: 5 * MB, mraid: false, cta: 'window.install', notes: 'Zip with a folder and HTML named like the zip; calls gameReady(), waits for gameStart(), calls gameEnd() once at the end and install() on every CTA.', entry: (lay) => `${lay.config.name}-mintegral/${lay.config.name}-mintegral.html` },
+  { id: 'mintegral', title: 'Mintegral', format: 'zip', limit: 5 * MB, mraid: false, cta: 'window.install', notes: 'Zip, folder and HTML share one name of letters, digits and underscores; calls gameReady(), waits for gameStart(), calls gameEnd() once at the end and install() on every CTA.', entry: (lay) => `${mintegralName(lay)}/${mintegralName(lay)}.html` },
   {
     id: 'google',
     title: 'Google Ads',
@@ -136,7 +138,7 @@ export async function buildNetworks(p: MainPlugin, parts: PackParts, lay: Layout
     } else {
       const files: Record<string, Uint8Array> = { [spec.entry!(lay)]: Buffer.from(html) }
       for (const [name, text] of Object.entries(spec.extra?.(lay) ?? {})) files[name] = Buffer.from(text)
-      path = join(base, spec.id === 'mintegral' ? `${lay.config.name}-mintegral.zip` : `${lay.config.name}-${spec.id}.zip`)
+      path = join(base, spec.id === 'mintegral' ? `${mintegralName(lay)}.zip` : `${lay.config.name}-${spec.id}.zip`)
       await writeFile(path, zipSync(files, { level: 9 }))
     }
     const bytes = (await stat(path)).size
