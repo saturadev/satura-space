@@ -15,6 +15,7 @@ interface EnginePlugin {
   description: string
   unity: string | null
   guide: string | null
+  pages: string | null
 }
 
 function pluginsRoot(): string {
@@ -39,14 +40,16 @@ function enginePlugins(): EnginePlugin[] {
       title: manifest.title || e.name,
       description: manifest.description || '',
       unity: existsSync(join(dir, 'unity')) ? join(dir, 'unity') : null,
-      guide: existsSync(join(dir, 'agent.md')) ? join(dir, 'agent.md') : null
+      guide: existsSync(join(dir, 'agent.md')) ? join(dir, 'agent.md') : null,
+      pages: existsSync(join(dir, 'pages')) ? join(dir, 'pages') : null
     })
   }
   return out.sort((a, b) => a.name.localeCompare(b.name))
 }
 
 export function enginePluginKeep(): string[] {
-  return [PLUGINS_DIR, `${PLUGINS_DIR}.meta`, GUIDE, ...enginePlugins().filter((p) => p.guide).map((p) => join(GUIDE_DIR, `${p.name}.md`))]
+  const plugins = enginePlugins()
+  return [PLUGINS_DIR, `${PLUGINS_DIR}.meta`, GUIDE, ...plugins.filter((p) => p.guide).map((p) => join(GUIDE_DIR, `${p.name}.md`)), ...plugins.filter((p) => p.pages).map((p) => join(GUIDE_DIR, p.name))]
 }
 
 async function writeIfChanged(path: string, text: string): Promise<boolean> {
@@ -59,7 +62,7 @@ async function writeIfChanged(path: string, text: string): Promise<boolean> {
 function guideWithPlugins(base: string, plugins: EnginePlugin[]): string {
   const rows = plugins.filter((p) => p.guide).map((p) => `| [${p.name}](agent-guide/${p.name}.md) | ${p.title}: ${p.description.replace(/\|/g, '\\|')} |`)
   if (!rows.length) return base
-  return `${base.replace(/\s+$/, '')}\n\nPlugins add their own globals to \`satura_exec\`:\n\n| File | What's in it |\n|---|---|\n${rows.join('\n')}\n`
+  return `${base.replace(/\s+$/, '')}\n\nPlugins add their own pages, and some add globals to \`satura_exec\`:\n\n| File | What's in it |\n|---|---|\n${rows.join('\n')}\n`
 }
 
 export async function syncEnginePlugins(engineSrc: string, dest: string): Promise<string[]> {
@@ -89,6 +92,10 @@ export async function syncEnginePlugins(engineSrc: string, dest: string): Promis
     await mkdir(join(dest, GUIDE_DIR), { recursive: true })
     for (const p of plugins.filter((x) => x.guide)) {
       if (await writeIfChanged(join(dest, GUIDE_DIR, `${p.name}.md`), await readFile(p.guide!, 'utf8'))) changed.push(join(GUIDE_DIR, `${p.name}.md`))
+    }
+    for (const p of plugins.filter((x) => x.pages)) {
+      const r = await syncTreeIncremental(p.pages!, join(dest, GUIDE_DIR, p.name))
+      changed.push(...[...r.copied, ...r.removed].map((f) => join(GUIDE_DIR, p.name, f)))
     }
     if (await writeIfChanged(join(dest, GUIDE), guideWithPlugins(base, plugins))) changed.push(GUIDE)
   }

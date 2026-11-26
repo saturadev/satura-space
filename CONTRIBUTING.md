@@ -89,6 +89,7 @@ plugins/<name>/
   renderer.tsx   default export (p) => void, runs in the window
   unity/         C# with its own asmdef, copied into the embedded engine as Plugins/<name>/
   agent.md       a page of the agent guide
+  pages/         HTML pages for people, copied next to that guide page
 ```
 
 Every file but `plugin.json` is optional. `<name>` is lowercase letters and digits. Plugin code
@@ -111,7 +112,8 @@ React and lucide icons in `renderer.tsx`.
 - `unity/` follows the engine's rules: editor code in an Editor-only asmdef, and the `.meta` files
   committed so GUIDs stay stable.
 - `agent.md` becomes `Documentation~/agent-guide/<name>.md` in the project, with a row in the
-  guide's plugin table.
+  guide's plugin table. `pages/` becomes `Documentation~/agent-guide/<name>/`, so the agent can show a
+  page with `report.open`. A plugin can be only these two, a reference with no code.
 
 These are built-in plugins with full trust. A project can also carry its own plugins in
 `.sspace/plugins/<name>/` (a panel and `exec.ts` functions run in the dashboard and `satura_exec`
