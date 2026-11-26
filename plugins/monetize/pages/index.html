@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How web games earn</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+<nav><a href="index.html" aria-current="page">How web games earn</a><a href="ads.html">Placing ads</a><a href="platforms.html">Where the rules live</a></nav>
+<h1>How web games earn</h1>
+<p class="lead">A browser game earns from the platform it is played on. The platform owns the players, the ads and the payments, and it pays you a share. Your part is to fit its rules and give it good moments to show an ad.</p>
+
+<h2>The ways money comes in</h2>
+<table>
+<tr><th>Model</th><th>How it works</th><th>Where you see it</th></tr>
+<tr><td>Ad revenue share</td><td>The platform shows ads in your game through its own SDK and pays part of what they earn. The most common model on web portals.</td><td>Poki, CrazyGames, Yandex Games, GameDistribution, YouTube Playables, Playgama</td></tr>
+<tr><td>Your own ads</td><td>On a site you host, you place ads yourself through an ad network made for HTML5 games and keep the publisher share.</td><td>Your own domain with Google AdSense H5 Games Ads, a Telegram Mini App with a Mini App ad network</td></tr>
+<tr><td>In-game purchases</td><td>Players buy items through the platform's payment system. Many portals don't allow it, or allow it only for invited games.</td><td>Yandex Games, Facebook Instant Games, Playgama, CrazyGames by invitation</td></tr>
+<tr><td>Paid game or paid content</td><td>Players pay for the game or unlock part of it. The store keeps a fee.</td><td>itch.io, Wavedash</td></tr>
+<tr><td>Licensing</td><td>A portal or publisher pays you for the game itself, sometimes for exclusivity. Agreed per game, not through an SDK.</td><td>Portals that pick games by hand</td></tr>
+</table>
+
+<h2>What decides how much a game earns</h2>
+<ul>
+<li><b>Playtime and return visits.</b> Ads are sold per impression, so minutes played and players coming back count for more than anything else.</li>
+<li><b>Where the players are.</b> Advertisers pay very different prices by country and device.</li>
+<li><b>Good ad moments.</b> Natural breaks the player accepts, and rewarded ads players choose because the reward is worth it.</li>
+<li><b>Load time.</b> Players leave before a slow game starts. A small first download keeps them.</li>
+<li><b>Fit with the platform.</b> Curated portals promote games that follow their integration rules and test well with their players.</li>
+</ul>
+
+<h2>The one rule every portal shares</h2>
+<p>A portal allows <b>only its own ads</b>, called through its own SDK. No other ad network, no ad images of your own, and usually no links out. So a game carries a different ad integration on each platform. Either build a version per platform with that platform's SDK, or use one cross-platform layer, such as the Playgama Bridge SDK, that calls the right SDK on each platform.</p>
+
+<h2>The events every SDK asks for</h2>
+<p>The names differ, the moments don't:</p>
+<table>
+<tr><th>Moment</th><th>What you tell the SDK</th></tr>
+<tr><td>The game finished loading</td><td>Loading is done and the player can start.</td></tr>
+<tr><td>Play starts or resumes</td><td>Gameplay started, on the player's first input and after every pause, menu or level end.</td></tr>
+<tr><td>Play stops</td><td>Gameplay stopped: pause, menu, level end, game over, cutscene.</td></tr>
+<tr><td>A natural break</td><td>A place for a full-screen ad. The platform decides whether one actually shows.</td></tr>
+<tr><td>The player asks for a reward</td><td>Show a rewarded ad and say whether the player earned the reward.</td></tr>
+</table>
+<p>How to place them well is on <a href="ads.html">Placing ads</a>. The current SDK for each platform is linked on <a href="platforms.html">Where the rules live</a>.</p>
+<footer>Principles checked 2026-11-26. Limits, revenue shares, SDK versions and commands change, so they are not copied here: every platform fact links to its owner's page. Read that page before you act on it.</footer>
+</main>
+</body>
+</html>

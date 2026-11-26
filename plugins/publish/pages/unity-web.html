@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unity for the web</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+<nav><a href="index.html">Publishing a web game</a><a href="unity-web.html" aria-current="page">Unity for the web</a><a href="platforms.html">Where each platform takes builds</a></nav>
+<h1>Unity for the web</h1>
+<p class="lead">Unity's Web platform builds a page with the game as WebAssembly. These are the settings and habits that decide whether a build loads everywhere and loads fast.</p>
+
+<h2>Building</h2>
+<ul>
+<li>The <b>Web build support</b> module has to be installed for the project's Unity version, through Unity Hub.</li>
+<li>Switching the project to the Web platform reimports assets for it. On a large project that takes a while, and switching back does it again. Build when you mean to.</li>
+<li>Build into a folder outside <code>Assets/</code>, for example <code>Builds/Web/</code>, and keep it out of git.</li>
+<li>A <b>WebGL template</b> decides the <code>index.html</code> around the game. Platform SDKs often ship their own template; select it in Player Settings → Resolution and Presentation.</li>
+</ul>
+
+<h2>Compression</h2>
+<p>Unity can compress the build with Brotli or Gzip, or not at all. A compressed build needs the server to send matching <code>Content-Encoding</code> headers. Where you don't control the server, you have two choices:</p>
+<ul>
+<li><b>Decompression Fallback</b> on: the loader decompresses in the browser. Works on any host, starts a little slower.</li>
+<li><b>Compression off:</b> some portals ask for this and compress files themselves. Read the platform's Unity page.</li>
+</ul>
+<p>On your own host, set the headers instead. Unity's manual has server configuration examples.</p>
+
+<h2>Size and loading</h2>
+<ul>
+<li>Most players leave a game that takes long to load, and portals measure it. Keep the first download small.</li>
+<li>Strip engine code, use a high managed stripping level if the game still runs, drop unused packages and modules.</li>
+<li>Compress textures, keep audio mono where it doesn't matter, avoid huge single assets.</li>
+<li>Load later content on demand (Addressables or asset bundles) when the game is big.</li>
+<li>Some hosts limit the size of a single file or the number of files. Unity's <code>.data</code> file is usually the largest.</li>
+</ul>
+
+<h2>In the browser</h2>
+<ul>
+<li>Audio can only start after the player's first tap or click. Make the first input start the sound.</li>
+<li>Phones have far less memory than desktops. Test on a real phone, iPhones especially.</li>
+<li>Use only relative paths to files in the build.</li>
+<li>Wrap local saving in error handling: private browsing can block storage, and the game must keep working.</li>
+<li>Decide mobile controls from the platform's device info where it gives one, not from touch support: many laptops have touch screens.</li>
+</ul>
+
+<div class="note">Settings move between Unity versions. The current manual pages: <a href="https://docs.unity3d.com/Manual/webgl-building.html" target="_blank" rel="noopener">building for the Web</a>, <a href="https://docs.unity3d.com/Manual/webgl-deploying.html" target="_blank" rel="noopener">deploying a Web build</a>, <a href="https://docs.unity3d.com/Manual/webgl-server-configuration-code-samples.html" target="_blank" rel="noopener">server configuration</a>. Portals publish Unity-specific advice too, linked on <a href="platforms.html">Where each platform takes builds</a>.</div>
+<footer>Principles checked 2026-11-26. Limits, revenue shares, SDK versions and commands change, so they are not copied here: every platform fact links to its owner's page. Read that page before you act on it.</footer>
+</main>
+</body>
+</html>

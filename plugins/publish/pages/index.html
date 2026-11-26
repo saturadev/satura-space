@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Publishing a web game</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+<nav><a href="index.html" aria-current="page">Publishing a web game</a><a href="unity-web.html">Unity for the web</a><a href="platforms.html">Where each platform takes builds</a></nav>
+<h1>Publishing a web game</h1>
+<p class="lead">The same path on every platform: build for the web, package it the way the platform wants, upload, test on the platform, then send it for review or release it. Some steps can run from the terminal or an agent; signing in and the final submit stay with you.</p>
+
+<h2>The path</h2>
+<table>
+<tr><th>Step</th><th>What happens</th></tr>
+<tr><td>1. Pick the platform</td><td>The platform decides the SDK, the ad rules and the package format, so pick it first. See <a href="platforms.html">Where each platform takes builds</a>.</td></tr>
+<tr><td>2. Integrate its SDK</td><td>Loading, gameplay and ad events through that platform's SDK, or through one cross-platform SDK. The Monetization plugin covers how.</td></tr>
+<tr><td>3. Build for the web</td><td>A WebGL build with settings that suit the platform's host. See <a href="unity-web.html">Unity for the web</a>.</td></tr>
+<tr><td>4. Package</td><td>Usually a zip with <code>index.html</code> at its root, plus any config file the platform asks for.</td></tr>
+<tr><td>5. Upload</td><td>From a CLI, an API, an MCP server or the platform's web console, depending on the platform.</td></tr>
+<tr><td>6. Test on the platform</td><td>A preview link or QA tool runs the game as players will see it, with the real SDK. Ads and saves are only real there.</td></tr>
+<tr><td>7. Review or release</td><td>Curated portals review every game and many updates. Open stores release when you say so.</td></tr>
+</table>
+
+<h2>Three kinds of upload</h2>
+<ul>
+<li><b>Command line or API.</b> An agent can push a build and get a link back. You sign in once, in your own terminal or browser, and the credentials stay on your computer.</li>
+<li><b>MCP server.</b> The platform's own server gives an agent tools to create the game page, upload builds and covers, and read review feedback. You allow the connection in your browser.</li>
+<li><b>Web console only.</b> The agent prepares the zip and the texts, you upload them in the platform's console.</li>
+</ul>
+<p>Platforms add APIs over time. Before deciding a platform is console-only, check its current developer docs.</p>
+
+<h2>What always stays with you</h2>
+<ul>
+<li><b>Accounts and sign-in.</b> Developer accounts, tax and payout forms, and every login. An agent never signs in for you and never keeps your keys in the project.</li>
+<li><b>Submitting and releasing.</b> Sending a game to review, pushing a version to production or updating a live game reaches real players. An agent prepares it and waits for your yes.</li>
+<li><b>Store page materials.</b> Title, description, icon, covers and screenshots. An agent can draft them; the platform's rules on sizes and content are on its own pages.</li>
+</ul>
+
+<h2>Before any upload</h2>
+<ul>
+<li>The game starts quickly and reaches play without a long menu.</li>
+<li>It works with mouse and keyboard, and with touch on phones if the platform shows it there.</li>
+<li>It fills its frame at every size and orientation the platform uses.</li>
+<li>Progress survives a page reload, or the game says that it won't.</li>
+<li>No external requests, links out or other ad systems unless the platform allows them.</li>
+<li>No errors in the browser console.</li>
+</ul>
+<footer>Principles checked 2026-11-26. Limits, revenue shares, SDK versions and commands change, so they are not copied here: every platform fact links to its owner's page. Read that page before you act on it.</footer>
+</main>
+</body>
+</html>

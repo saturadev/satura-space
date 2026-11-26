@@ -1,0 +1,5 @@
+{
+  "name": "publish",
+  "title": "Publishing",
+  "description": "Reference on putting a Unity web build on web platforms: the publishing path, Unity web build settings, and how and where each platform takes builds"
+}

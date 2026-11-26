@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where each platform takes builds</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+<nav><a href="index.html">Publishing a web game</a><a href="unity-web.html">Unity for the web</a><a href="platforms.html" aria-current="page">Where each platform takes builds</a></nav>
+<h1>Where each platform takes builds</h1>
+<p class="lead">How a build gets onto each platform, as of the date at the bottom, and where the current instructions are. Pages written for machines come first: an agent reads those.</p>
+
+<table>
+<tr><th>Platform</th><th>Upload</th><th>Read here</th></tr>
+<tr><td>itch.io</td><td><code>butler</code> CLI pushes a folder or zip. Open store, no review. The game page is set to HTML once, on the website.</td><td><a href="https://itch.io/docs/butler/" target="_blank" rel="noopener">butler manual</a>, <a href="https://itch.io/docs/creators/html5" target="_blank" rel="noopener">HTML5 games</a></td></tr>
+<tr><td>Poki</td><td>Poki CLI, written for agents: run it with no arguments for its own structured help. You sign in once yourself. Curated: review is requested on Poki for Developers.</td><td><a href="https://github.com/poki/poki-cli" target="_blank" rel="noopener">Poki CLI</a>, <a href="https://developers.poki.com/" target="_blank" rel="noopener">developer guide</a></td></tr>
+<tr><td>Playgama</td><td>MCP server for agents: create the game, upload builds and covers, publish a public sandbox link, read review comments. You allow it in the browser. Submitting to review stays in the console.</td><td><a href="https://wiki.playgama.com/llms.txt" target="_blank" rel="noopener">llms.txt</a>, <a href="https://wiki.playgama.com/playgama/mcp" target="_blank" rel="noopener">MCP server</a></td></tr>
+<tr><td>Facebook Instant Games</td><td>Graph API uploads a zip, and a separate call pushes a version to production. Needs a Meta app; the token stays out of the project.</td><td><a href="https://developers.facebook.com/documentation/games/launch/upload-bundle.md" target="_blank" rel="noopener">Upload bundle</a></td></tr>
+<tr><td>Wavedash</td><td><code>wavedash</code> CLI pushes numbered builds; a build is promoted to published from the CLI or the portal.</td><td><a href="https://docs.wavedash.com/llms.txt" target="_blank" rel="noopener">llms.txt</a></td></tr>
+<tr><td>Your own site</td><td>Any static host. Cloudflare Pages deploys a folder with <code>wrangler</code> after a one-time sign-in.</td><td><a href="https://developers.cloudflare.com/pages/llms.txt" target="_blank" rel="noopener">Cloudflare Pages llms.txt</a>, <a href="https://developers.cloudflare.com/pages/platform/limits/" target="_blank" rel="noopener">limits</a></td></tr>
+<tr><td>Yandex Games</td><td>Developer console: a draft with the archive, texts and images, then moderation.</td><td><a href="https://yandex.com/dev/games/doc/en/llms.txt" target="_blank" rel="noopener">llms.txt</a>, <a href="https://yandex.com/dev/games/doc/en/console/add-new-game" target="_blank" rel="noopener">adding a game</a>, <a href="https://yandex.com/dev/games/doc/en/concepts/requirements" target="_blank" rel="noopener">requirements</a></td></tr>
+<tr><td>CrazyGames</td><td>Developer portal with a QA tool. A game starts in a basic launch and may be picked for a full launch with the SDK and ads.</td><td><a href="https://docs.crazygames.com/" target="_blank" rel="noopener">Documentation</a>, <a href="https://developer.crazygames.com/" target="_blank" rel="noopener">developer portal</a></td></tr>
+<tr><td>GameDistribution</td><td>Developer console.</td><td><a href="https://gamedistribution.com/developers/" target="_blank" rel="noopener">Developers</a></td></tr>
+<tr><td>YouTube Playables</td><td>Through the Playables developer portal after onboarding; release goes through a partner manager.</td><td><a href="https://developers.google.com/youtube/gaming/playables" target="_blank" rel="noopener">Playables</a></td></tr>
+<tr><td>Telegram Mini Apps</td><td>You host the game and connect it to a bot.</td><td><a href="https://core.telegram.org/bots/webapps" target="_blank" rel="noopener">Mini Apps</a></td></tr>
+</table>
+
+<div class="note">Every platform has its own requirements for size, devices, content and store images, and they change. Read them on the platform's pages before building for it. Some forbid things a generated game might do: Yandex Games, for one, doesn't allow interactive AI inside games.</div>
+<footer>Principles checked 2026-11-26. Limits, revenue shares, SDK versions and commands change, so they are not copied here: every platform fact links to its owner's page. Read that page before you act on it.</footer>
+</main>
+</body>
+</html>

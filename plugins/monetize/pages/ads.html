@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Placing ads</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+<nav><a href="index.html">How web games earn</a><a href="ads.html" aria-current="page">Placing ads</a><a href="platforms.html">Where the rules live</a></nav>
+<h1>Placing ads</h1>
+<p class="lead">These rules show up, worded differently, in the requirements of every major web portal. A game that follows them passes review more often and earns more, because players stay.</p>
+
+<h2>Full-screen ads between play</h2>
+<ul>
+<li><b>Only at natural breaks:</b> a level ends, the player died and restarts, a round is over. Never during play, and never on a menu, settings or shop button.</li>
+<li><b>Ask often, let the platform decide.</b> Request an ad at every good break. The platform's SDK decides how often one actually shows. No timers of your own that force ads.</li>
+<li><b>Pause and mute.</b> While an ad plays, the game is paused, input is off and the game's audio is muted. Mute when the ad starts, not when you request it, because often no ad comes.</li>
+<li><b>Always continue.</b> When no ad comes (no fill, too soon, an ad blocker) the game goes on as if nothing happened. Never freeze waiting for an ad.</li>
+</ul>
+
+<h2>Rewarded ads</h2>
+<ul>
+<li><b>Optional, always.</b> A rewarded ad is an extra: more coins, a second chance, a cosmetic. Progress never depends on one.</li>
+<li><b>Say what it is.</b> The button shows a video icon and the exact reward. The player knows an ad comes before tapping.</li>
+<li><b>Offer the other way equally.</b> The plain "continue" button sits next to the rewarded one and is at least as easy to see and tap.</li>
+<li><b>Reward only on success.</b> Give the reward when the SDK says it was earned, never on an error or a skipped ad. One ad, one reward: never chain several.</li>
+<li><b>Show it, apply it.</b> Celebrate the reward and apply it at once.</li>
+<li><b>Don't push.</b> No repeated popups asking to watch. Offer it at moments where the reward matters.</li>
+</ul>
+
+<h2>Banners</h2>
+<p>Where a platform offers banners, they go on screens that stay open for a while (a level-end screen, a shop), never during play, and never covering the game's own buttons on any screen size. Some platforms only allow banners they place themselves at the edge of the page.</p>
+
+<h2>Ad blockers</h2>
+<p>The game stays fully playable with an ad blocker. Don't build your own "ad blocked" messages; the platform handles that. A rewarded ad that can't play gives no reward, and its button doesn't pretend to work.</p>
+
+<h2>Things that fail review almost everywhere</h2>
+<ul>
+<li>Ads or ad images from any source other than the platform's SDK.</li>
+<li>Buttons that trick the player into an ad.</li>
+<li>Rewarded ads gating the core game.</li>
+<li>Purchases or "remove ads" buttons on a platform that doesn't support them.</li>
+<li>A game that hangs when no ad is shown.</li>
+</ul>
+
+<div class="note">Each platform has its own extra rules on top of these, and they change. Before integrating, read that platform's current ad requirements, linked on <a href="platforms.html">Where the rules live</a>.</div>
+<footer>Principles checked 2026-11-26. Limits, revenue shares, SDK versions and commands change, so they are not copied here: every platform fact links to its owner's page. Read that page before you act on it.</footer>
+</main>
+</body>
+</html>
