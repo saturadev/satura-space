@@ -7,6 +7,7 @@ import { unityProvider } from '../unity/unity-instance-provider'
 import { UnityControlClient } from '../unity/unity-control-client'
 import type { HandleParams } from '@shared/app-handles'
 import type { MainPlugin, MainPluginSetup, PluginCtx, PluginExecFn, PluginHandleDef, PluginManifest } from './api'
+import { openPluginPage } from './page'
 import { listProjectPlugins, projectExecModules, projectPluginsCall, type BuiltInPluginInfo, type ProjectExecModule } from './project'
 
 const manifests = import.meta.glob<PluginManifest>('../../../../../plugins/*/plugin.json', { eager: true, import: 'default' })
@@ -56,6 +57,7 @@ function pluginFor(name: string, manifest: PluginManifest): MainPlugin {
     manifest,
     appVersion: app.getVersion(),
     cacheDir: join(cacheRoot(), name),
+    sourceDir: app.isPackaged ? null : join(app.getAppPath(), '..', '..', 'plugins', name),
     handle(def) {
       defs.set(def.name, def)
       defineHandle({
@@ -77,6 +79,7 @@ function pluginFor(name: string, manifest: PluginManifest): MainPlugin {
       broadcastToAllWindows('plugin:event', name, event, data)
     },
     unity: (projectRoot, command, args = {}, timeoutMs = UNITY_MS) => unityCommand(name, projectRoot, command, args, timeoutMs),
+    page: (options) => openPluginPage(name, options),
     log
   }
 }

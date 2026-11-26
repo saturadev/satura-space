@@ -100,6 +100,11 @@ React and lucide icons in `renderer.tsx`.
   `satura_exec`. `p.unity(projectRoot, command, args)` runs a command the plugin's C# registered with
   `SaturaPlugins.Command("<name>.<command>", json => resultJson)` in the project's editor.
   `p.emit(event, data)` reaches the window, and `p.cacheDir` is the plugin's own cache folder.
+  `p.page({ width, height, scale })` opens a hidden offscreen page in its own in-memory session
+  (`load(file or url, query)`, `evaluate(js)`, `screenshot()`, `resize`, `close`) that records console
+  `messages`, blocks and lists every non-local `request` and every `window.open` in `opened`; close it
+  when done. `p.sourceDir` is the plugin's folder in the repo in a dev build (read its files live
+  there) and `null` in a packaged one. `zipSync` and `unzipSync` come from `@satura/plugin`.
 - In `renderer.tsx`, `p.panel({ id, title, icon, component })` adds a panel to the New session
   menu, `p.handle(...)` adds a window handle, `p.call(handle, projectRoot, params)` runs one of the
   plugin's main handles and `p.on(event, cb)` hears `p.emit`.
