@@ -8,29 +8,61 @@
 [![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows-5e6ad2)](https://github.com/saturadev/satura-space/releases/latest)
 [![License](https://img.shields.io/github/license/saturadev/satura-space)](LICENSE)
 
-**Your agent sets the stage. You tune the feel.**
+**Your AI game studio. On real Unity.**
 
-Coding agents build your Unity game while it streams live beside them. When a value needs your eye,
-they hand you Unity's real Inspector on just that.
+Claude Code, Codex, Cursor and other coding agents build your game in Unity. You play it live while
+they work, tune the feel in Unity's real Inspector, and ship a normal Unity project. It's free and open source.
 
 ![Satura Space: four players streaming, a Tuner on one runner, four agents working in scratchpads](.github/media/hero-app.webp)
 
-Checking what an agent did to a Unity project usually means switching to the editor, pressing Play
-and clicking through it yourself. Satura Space runs Claude Code, Codex, Cursor and other agents next
-to hidden Unity editors that stream into the same window, so you play the game while the agents work,
-without building a player.
+- **Idea in, game out.** Give your agent a sentence, a design doc or a link to a game clip. It builds
+  the game in a hidden Unity editor of its own, and several agents build at once.
+- **Play it while it's built.** The game streams into the app beside the agents' terminals, so you
+  play every change without building a player or revealing the editor.
+- **Tune the feel by hand.** When a value needs your eye, the agent hands you Unity's real Inspector
+  on just that, and your edits go back to it.
+- **Ship it, or make it earn.** It's your Unity project: build it for Steam, mobile or web. The
+  playables plugin turns a scene into a one-file playable ad for seven ad networks.
+- **Your agents, your AI plan.** Any CLI agent on your PATH. No API key, no credits, no token markup.
 
-## Download
+## Made with Satura Space
 
-This tool is still in alpha testing.
+I pasted eight TikTok game clips into Satura Space. For each one a Claude agent watched the clip,
+built an original Unity game that plays like it, playtested it with a bot and published the repo.
+Prices are what each game cost at API rates. All eight play in the browser at
+[saturaspace.com/games](https://saturaspace.com/games).
 
-Get the latest release from [GitHub Releases](https://github.com/saturadev/satura-space/releases/latest):
-macOS on Apple Silicon (`.dmg`) or Windows x64 (`.exe`). The app updates itself from the same page.
+<table width="100%">
+<tr>
+<td width="25%" valign="top"><a href="https://saturaspace.com/play/throw/"><img src="https://saturaspace.com/media/game-sprout-sling.jpg" width="100%" alt="Sprout Sling"></a><br><b>Sprout Sling</b> · $7.11<br><a href="https://saturaspace.com/play/throw/">Play</a> · <a href="https://github.com/saturadev/sprout-sling">Source</a></td>
+<td width="25%" valign="top"><a href="https://saturaspace.com/play/ballrun/"><img src="https://saturaspace.com/media/game-tumble-lane.jpg" width="100%" alt="Tumble Lane"></a><br><b>Tumble Lane</b> · $10.85<br><a href="https://saturaspace.com/play/ballrun/">Play</a> · <a href="https://github.com/saturadev/tumble-lane">Source</a></td>
+<td width="25%" valign="top"><a href="https://saturaspace.com/play/merge/"><img src="https://saturaspace.com/media/game-spud-bowl.jpg" width="100%" alt="Spud Bowl"></a><br><b>Spud Bowl</b> · $8.19<br><a href="https://saturaspace.com/play/merge/">Play</a> · <a href="https://github.com/saturadev/spud-bowl">Source</a></td>
+<td width="25%" valign="top"><a href="https://saturaspace.com/play/bear/"><img src="https://saturaspace.com/media/game-grizzle-valley.jpg" width="100%" alt="Grizzle Valley"></a><br><b>Grizzle Valley</b> · $4.89<br><a href="https://saturaspace.com/play/bear/">Play</a> · <a href="https://github.com/saturadev/grizzle-valley">Source</a></td>
+</tr>
+<tr>
+<td width="25%" valign="top"><a href="https://saturaspace.com/play/brawl/"><img src="https://saturaspace.com/media/game-flopyard.jpg" width="100%" alt="Flopyard"></a><br><b>Flopyard</b> · $5.49<br><a href="https://saturaspace.com/play/brawl/">Play</a> · <a href="https://github.com/saturadev/flopyard">Source</a></td>
+<td width="25%" valign="top"><a href="https://saturaspace.com/play/spear/"><img src="https://saturaspace.com/media/game-spear-drop.jpg" width="100%" alt="Spear Drop"></a><br><b>Spear Drop</b> · $6.81<br><a href="https://saturaspace.com/play/spear/">Play</a> · <a href="https://github.com/saturadev/spear-drop">Source</a></td>
+<td width="25%" valign="top"><a href="https://saturaspace.com/play/mudbike/"><img src="https://saturaspace.com/media/game-mud-rider.jpg" width="100%" alt="Mud Rider"></a><br><b>Mud Rider</b> · $9.19<br><a href="https://saturaspace.com/play/mudbike/">Play</a> · <a href="https://github.com/saturadev/mud-rider">Source</a></td>
+<td width="25%" valign="top"><a href="https://saturaspace.com/play/icedig/"><img src="https://saturaspace.com/media/game-chisel-peak.jpg" width="100%" alt="Chisel Peak"></a><br><b>Chisel Peak</b> · $10.35<br><a href="https://saturaspace.com/play/icedig/">Play</a> · <a href="https://github.com/saturadev/chisel-peak">Source</a></td>
+</tr>
+</table>
 
-You need Unity 6 with Unity Hub signed in, and a coding agent CLI on your PATH. Bring your own AI
-subscription: Satura Space doesn't resell tokens or ask for an API key.
+Two playable ads made the same way, each one HTML file under the ad size limit:
+[Agent Match](https://saturaspace.com/play/agent-match/) ([source](https://github.com/saturadev/agent-match-playable))
+and [Helix Jump](https://saturaspace.com/play/helix-jump/) ([source](https://github.com/saturadev/helix-jump-playable)).
+More at [saturaspace.com/playables](https://saturaspace.com/playables).
 
-## What it does
+## Quick start
+
+1. Download the latest release from [GitHub Releases](https://github.com/saturadev/satura-space/releases/latest):
+   macOS on Apple Silicon (`.dmg`) or Windows x64 (`.exe`). The app updates itself from the same page.
+2. Open a Unity 6 project in it (Unity Hub must be signed in).
+3. Start an agent and tell it what game to make.
+
+You need Unity 6 and a coding agent CLI on your PATH. Bring your own AI subscription: Satura Space
+doesn't resell tokens or ask for an API key. It's still in alpha.
+
+## Inside the studio
 
 - **The hand-off.** The agent sets up the moment, then opens a Tuner on what needs your eye: a small
   Unity editor in a panel with the hierarchy, a scene view, Unity's real Inspector and an animation
