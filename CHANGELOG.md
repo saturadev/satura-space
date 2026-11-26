@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.5.1 — 2026-11-27
+
+- **Unity 6.6** — projects on Unity 6000.6 open again. The `playables` plugin called `GetInstanceID`, which Unity 6.6 refuses to compile, so the editor started in Safe Mode and never connected. The engine and its plugins also stopped using `FindObjectsSortMode` and `Light.GetLights`, which Unity 6.6 marks obsolete, so they keep compiling when Unity removes those too.
+
 ## 3.5.0 — 2026-11-26
 
 - **Monetization and Publishing references** — two built-in plugins with no code, each a page in the agent guide plus HTML pages for you: how web games earn, the ad rules every portal shares, how to set up a Unity web build, and how each platform takes builds (CLI, API, MCP or web console). Nothing that changes is copied into them: limits, revenue shares, SDK versions and commands link to the platform's own pages, and the agent reads those live before it acts. Ask your agent to show you a page.
