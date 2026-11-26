@@ -49,6 +49,59 @@ export function matApply(m, x, y) {
   return [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
 }
 
+export function m4Mul(a, b) {
+  const out = new Array(16);
+  for (let column = 0; column < 4; column++) {
+    const c = column * 4;
+    for (let row = 0; row < 4; row++) {
+      out[c + row] = a[row] * b[c] + a[4 + row] * b[c + 1] + a[8 + row] * b[c + 2] + a[12 + row] * b[c + 3];
+    }
+  }
+  return out;
+}
+
+export function m4TRS(px, py, pz, q, scale) {
+  const { x, y, z, w } = q;
+  const sx = scale.x;
+  const sy = scale.y;
+  const sz = scale.z;
+  return [
+    (1 - 2 * (y * y + z * z)) * sx, 2 * (x * y + w * z) * sx, 2 * (x * z - w * y) * sx, 0,
+    2 * (x * y - w * z) * sy, (1 - 2 * (x * x + z * z)) * sy, 2 * (y * z + w * x) * sy, 0,
+    2 * (x * z + w * y) * sz, 2 * (y * z - w * x) * sz, (1 - 2 * (x * x + y * y)) * sz, 0,
+    px, py, pz, 1,
+  ];
+}
+
+export function m4Invert(m) {
+  const a = m[0], b = m[1], c = m[2], d = m[4], e = m[5], f = m[6], g = m[8], h = m[9], i = m[10];
+  const A = e * i - f * h;
+  const B = f * g - d * i;
+  const C = d * h - e * g;
+  const det = a * A + b * B + c * C;
+  if (Math.abs(det) < 1e-18) return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+  const k = 1 / det;
+  const out = [A * k, (c * h - b * i) * k, (b * f - c * e) * k, 0, B * k, (a * i - c * g) * k, (c * d - a * f) * k, 0, C * k, (b * g - a * h) * k, (a * e - b * d) * k, 0, 0, 0, 0, 1];
+  out[12] = -(out[0] * m[12] + out[4] * m[13] + out[8] * m[14]);
+  out[13] = -(out[1] * m[12] + out[5] * m[13] + out[9] * m[14]);
+  out[14] = -(out[2] * m[12] + out[6] * m[13] + out[10] * m[14]);
+  return out;
+}
+
+export function m4Point(m, x, y, z) {
+  return new Vector3(m[0] * x + m[4] * y + m[8] * z + m[12], m[1] * x + m[5] * y + m[9] * z + m[13], m[2] * x + m[6] * y + m[10] * z + m[14]);
+}
+
+export function m4Vector(m, x, y, z) {
+  return new Vector3(m[0] * x + m[4] * y + m[8] * z, m[1] * x + m[5] * y + m[9] * z, m[2] * x + m[6] * y + m[10] * z);
+}
+
+export const Space = Object.freeze({ World: 'World', Self: 'Self' });
+
+function asVector(x, y, z) {
+  return typeof x === 'object' ? x : new Vector3(x, y, z);
+}
+
 export class WaitForSeconds {
   constructor(seconds) {
     this.seconds = seconds;
@@ -111,7 +164,7 @@ function stepCoroutine(coroutine) {
       coroutine.stack.push(yielded);
       continue;
     }
-    if (yielded instanceof WaitForSeconds) coroutine.wait = { until: Time.timeAsDouble + Math.fround(yielded.seconds) };
+    if (yielded instanceof WaitForSeconds) coroutine.wait = Engine.loading ? { after: Math.fround(yielded.seconds) } : { until: Time.timeAsDouble + Math.fround(yielded.seconds) };
     else if (yielded instanceof WaitForSecondsRealtime) coroutine.wait = { untilReal: Time.unscaledTimeAsDouble + Math.fround(yielded.seconds) };
     else if (yielded instanceof WaitUntil) coroutine.wait = { predicate: yielded.predicate, expect: true };
     else if (yielded instanceof WaitWhile) coroutine.wait = { predicate: yielded.predicate, expect: false };
@@ -128,6 +181,11 @@ function coroutineReady(coroutine, endOfFrame) {
   if (endOfFrame) return false;
   if (coroutine.frame >= Time.frameCount) return false;
   if (!wait) return true;
+  if (wait.after !== undefined) {
+    wait.until = Time.timeAsDouble + wait.after;
+    wait.after = undefined;
+    return false;
+  }
   if (wait.until !== undefined) return Time.timeAsDouble >= wait.until;
   if (wait.untilReal !== undefined) return Time.unscaledTimeAsDouble >= wait.untilReal;
   if (wait.predicate) return !!wait.predicate() === wait.expect;
@@ -143,10 +201,12 @@ export const Engine = {
   destroyQueue: [],
   invokes: [],
   animators: new Set(),
+  early: [],
   preUpdate: [],
   pendingLoad: null,
   loadScene: null,
   paused: false,
+  loading: false,
 
   reset() {
     this.roots.length = 0;
@@ -748,13 +808,45 @@ export class Transform extends Component {
   _load(props, revive) {
     if (props.m_LocalPosition) this._lp = revive(props.m_LocalPosition);
     if (props.m_LocalScale) this._ls = revive(props.m_LocalScale);
-    if (props.m_LocalRotation) this._le = revive(props.m_LocalRotation).eulerAngles;
+    if (props.m_LocalRotation) this._setQ(revive(props.m_LocalRotation));
   }
 
   _copy(source) {
     this._lp = source._lp.clone();
     this._le = source._le.clone();
     this._ls = source._ls.clone();
+    this._lq = source._lq;
+    this._qe = source._qe;
+  }
+
+  _q() {
+    const euler = this._le;
+    const key = this._qe;
+    if (!key || key.x !== euler.x || key.y !== euler.y || key.z !== euler.z) {
+      this._lq = Quaternion.Euler(euler.x, euler.y, euler.z);
+      this._qe = euler.clone();
+    }
+    return this._lq;
+  }
+
+  _setQ(value) {
+    this._lq = new Quaternion(value.x, value.y, value.z, value.w);
+    this._le = this._lq.eulerAngles;
+    this._qe = this._le.clone();
+  }
+
+  _local4() {
+    if (this._driver) {
+      const m = this._driver.matrix();
+      return [m[0], m[1], 0, 0, m[2], m[3], 0, 0, 0, 0, 1, 0, m[4], m[5], this._lp.z, 1];
+    }
+    const position = this._layout();
+    return m4TRS(position.x, position.y, this._lp.z, this._q(), this._ls);
+  }
+
+  _world4() {
+    const local = this._local4();
+    return this._parent ? m4Mul(this._parent._world4(), local) : local;
   }
 
   _layout() {
@@ -790,8 +882,7 @@ export class Transform extends Component {
     if (parent === this._parent) return;
     const gameObject = this.gameObject;
     const wasActive = gameObject.activeInHierarchy;
-    const world = worldPositionStays ? this._worldMatrix() : null;
-    const worldZ = this._worldZ();
+    const world = worldPositionStays ? { position: this.position, rotation: this.rotation, scale: this.lossyScale } : null;
     if (this._parent) {
       const siblings = this._parent._children;
       const index = siblings.indexOf(this);
@@ -804,12 +895,11 @@ export class Transform extends Component {
     if (parent) parent._children.push(this);
     else Engine.roots.push(gameObject);
     if (world) {
-      const local = parent ? matMul(matInvert(parent._worldMatrix()), world) : world;
-      const scaleX = Math.hypot(local[0], local[1]);
-      const scaleY = Math.hypot(local[2], local[3]);
-      this._ls = new Vector3(scaleX * Mathf.Sign(this._ls.x), scaleY * Mathf.Sign(this._ls.y), this._ls.z);
-      this._le = new Vector3(this._le.x, this._le.y, Math.atan2(local[1], local[0]) * Mathf.Rad2Deg);
-      this._setLayout(local[4], local[5], worldZ - (parent ? parent._worldZ() : 0));
+      const outer = parent ? parent.lossyScale : new Vector3(1, 1, 1);
+      const ratio = (value, by, current) => (by > 1e-12 ? (value / by) * Mathf.Sign(current) : current);
+      this._ls = new Vector3(ratio(world.scale.x, outer.x, this._ls.x), ratio(world.scale.y, outer.y, this._ls.y), ratio(world.scale.z, outer.z, this._ls.z));
+      this.rotation = world.rotation;
+      this.position = world.position;
     }
     const isActive = gameObject.activeInHierarchy;
     if (!wasActive && isActive) activateTree(gameObject);
@@ -830,8 +920,7 @@ export class Transform extends Component {
   get position() {
     const position = this._layout();
     if (!this._parent) return new Vector3(position.x, position.y, this._lp.z);
-    const point = matApply(this._parent._worldMatrix(), position.x, position.y);
-    return new Vector3(point[0], point[1], this._worldZ());
+    return m4Point(this._parent._world4(), position.x, position.y, this._lp.z);
   }
   set position(value) {
     const z = value.z === undefined ? 0 : value.z;
@@ -839,8 +928,8 @@ export class Transform extends Component {
       this._setLayout(value.x, value.y, z);
       return;
     }
-    const point = matApply(matInvert(this._parent._worldMatrix()), value.x, value.y);
-    this._setLayout(point[0], point[1], z - this._parent._worldZ());
+    const point = m4Point(m4Invert(this._parent._world4()), value.x, value.y, z);
+    this._setLayout(point.x, point.y, point.z);
   }
 
   get localPosition() {
@@ -859,38 +948,62 @@ export class Transform extends Component {
   }
 
   get lossyScale() {
-    const world = this._worldMatrix();
-    return new Vector3(Math.hypot(world[0], world[1]), Math.hypot(world[2], world[3]), this._ls.z);
+    const m = this._world4();
+    return new Vector3(Math.hypot(m[0], m[1], m[2]), Math.hypot(m[4], m[5], m[6]), Math.hypot(m[8], m[9], m[10]));
   }
 
   get localEulerAngles() {
-    return this._le.clone();
+    return this._q().eulerAngles;
   }
   set localEulerAngles(value) {
     this._le = Vector3.From(value);
   }
 
   get eulerAngles() {
-    const world = this._worldMatrix();
-    return new Vector3(this._le.x, this._le.y, Math.atan2(world[1], world[0]) * Mathf.Rad2Deg);
+    return this.rotation.eulerAngles;
   }
   set eulerAngles(value) {
-    const parentAngle = this._parent ? this._parent.eulerAngles.z : 0;
-    this._le = new Vector3(value.x, value.y, value.z - parentAngle);
+    this.rotation = Quaternion.Euler(value);
   }
 
   get localRotation() {
-    return Quaternion.Euler(this._le);
+    return this._q().clone();
   }
   set localRotation(value) {
-    this._le = value.eulerAngles;
+    this._setQ(value);
   }
 
   get rotation() {
-    return Quaternion.Euler(this.eulerAngles);
+    return this._parent ? this._parent.rotation.mul(this._q()) : this._q().clone();
   }
   set rotation(value) {
-    this.eulerAngles = value.eulerAngles;
+    this._setQ(this._parent ? Quaternion.Inverse(this._parent.rotation).mul(value) : value);
+  }
+
+  get forward() {
+    return this.rotation.mul(Vector3.forward);
+  }
+  set forward(value) {
+    this.rotation = Quaternion.LookRotation(value);
+  }
+  get up() {
+    return this.rotation.mul(Vector3.up);
+  }
+  set up(value) {
+    this.rotation = Quaternion.FromToRotation(Vector3.up, value);
+  }
+  get right() {
+    return this.rotation.mul(Vector3.right);
+  }
+  set right(value) {
+    this.rotation = Quaternion.FromToRotation(Vector3.right, value);
+  }
+
+  get localToWorldMatrix() {
+    return this._world4();
+  }
+  get worldToLocalMatrix() {
+    return m4Invert(this._world4());
   }
 
   get childCount() {
@@ -956,25 +1069,77 @@ export class Transform extends Component {
     for (const child of this._children.slice()) child.SetParent(null, true);
   }
 
-  TransformPoint(point) {
-    const result = matApply(this._worldMatrix(), point.x, point.y);
-    return new Vector3(result[0], result[1], (point.z || 0) + this._worldZ());
+  TransformPoint(x, y, z) {
+    const point = asVector(x, y, z);
+    return m4Point(this._world4(), point.x, point.y, point.z || 0);
   }
 
-  InverseTransformPoint(point) {
-    const result = matApply(matInvert(this._worldMatrix()), point.x, point.y);
-    return new Vector3(result[0], result[1], (point.z || 0) - this._worldZ());
+  InverseTransformPoint(x, y, z) {
+    const point = asVector(x, y, z);
+    return m4Point(m4Invert(this._world4()), point.x, point.y, point.z || 0);
   }
 
-  Translate(x, y = 0, z = 0) {
-    const delta = typeof x === 'object' ? x : new Vector3(x, y, z);
-    const position = this._layout();
-    this._setLayout(position.x + delta.x, position.y + delta.y, this._lp.z + (delta.z || 0));
+  TransformDirection(x, y, z) {
+    return this.rotation.mul(asVector(x, y, z));
   }
 
-  Rotate(x, y = 0, z = 0) {
-    const delta = typeof x === 'object' ? x : new Vector3(x, y, z);
-    this._le = new Vector3(this._le.x + delta.x, this._le.y + delta.y, this._le.z + delta.z);
+  InverseTransformDirection(x, y, z) {
+    return Quaternion.Inverse(this.rotation).mul(asVector(x, y, z));
+  }
+
+  TransformVector(x, y, z) {
+    const vector = asVector(x, y, z);
+    return m4Vector(this._world4(), vector.x, vector.y, vector.z || 0);
+  }
+
+  InverseTransformVector(x, y, z) {
+    const vector = asVector(x, y, z);
+    return m4Vector(m4Invert(this._world4()), vector.x, vector.y, vector.z || 0);
+  }
+
+  Translate(x, y, z, space) {
+    const vector = typeof x === 'object';
+    const delta = vector ? Vector3.From(x) : new Vector3(x, y || 0, z || 0);
+    const relative = vector ? y : space;
+    if (relative === Space.World) this.position = this.position.add(delta);
+    else this.position = this.position.add((relative instanceof Transform ? relative : this).TransformDirection(delta));
+  }
+
+  Rotate(x, y, z, space) {
+    const vector = typeof x === 'object';
+    let relative = vector ? y : space;
+    let turn;
+    if (vector && typeof y === 'number') {
+      turn = Quaternion.AngleAxis(y, x);
+      relative = z;
+    } else {
+      turn = vector ? Quaternion.Euler(x) : Quaternion.Euler(x, y || 0, z || 0);
+    }
+    if (relative === Space.World) this.rotation = turn.mul(this.rotation);
+    else this._setQ(this._q().mul(turn));
+  }
+
+  RotateAround(point, axis, angle) {
+    const turn = Quaternion.AngleAxis(angle, axis);
+    const position = Vector3.From(point).add(turn.mul(this.position.sub(point)));
+    this.rotation = turn.mul(this.rotation);
+    this.position = position;
+  }
+
+  LookAt(target, up) {
+    const point = target instanceof Transform ? target.position : target;
+    const direction = Vector3.From(point).sub(this.position);
+    if (direction.sqrMagnitude > 0) this.rotation = Quaternion.LookRotation(direction, up);
+  }
+
+  SetPositionAndRotation(position, rotation) {
+    this.rotation = rotation;
+    this.position = position;
+  }
+
+  SetLocalPositionAndRotation(position, rotation) {
+    this._setQ(rotation);
+    this.localPosition = position;
   }
 }
 

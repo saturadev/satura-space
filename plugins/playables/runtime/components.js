@@ -85,9 +85,13 @@ export class Camera extends Behaviour {
     this.backgroundColor = new Color(0, 0, 0, 1);
     this.clearFlags = 2;
     this.depth = 0;
+    this.fieldOfView = 60;
+    this.nearClipPlane = 0.3;
+    this.farClipPlane = 1000;
+    this.cullingMask = -1;
   }
 
-  static fields = ['orthographic', 'orthographicSize', 'backgroundColor', 'clearFlags', 'depth'];
+  static fields = ['orthographic', 'orthographicSize', 'backgroundColor', 'clearFlags', 'depth', 'fieldOfView', 'nearClipPlane', 'farClipPlane', 'cullingMask'];
 
   static get main() {
     const cameras = FindObjectsOfType(Camera).filter((camera) => camera._enabled);
@@ -106,6 +110,10 @@ export class Camera extends Behaviour {
     this.backgroundColor = revive(props.m_BackGroundColor);
     this.clearFlags = props.m_ClearFlags;
     this.depth = props.m_Depth || 0;
+    if (props['field of view'] !== undefined) this.fieldOfView = props['field of view'];
+    if (props['near clip plane'] !== undefined) this.nearClipPlane = props['near clip plane'];
+    if (props['far clip plane'] !== undefined) this.farClipPlane = props['far clip plane'];
+    if (typeof props.m_CullingMask === 'number') this.cullingMask = props.m_CullingMask | 0;
   }
 
   get aspect() {

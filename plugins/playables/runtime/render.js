@@ -6,7 +6,7 @@ import { Canvas, CanvasGroup, Graphic } from './ui.js';
 export class CanvasRenderer2D {
   constructor(canvas, atlases, options = {}) {
     this.canvas = canvas;
-    this.context = canvas.getContext('2d', { alpha: false });
+    this.context = canvas.getContext('2d', { alpha: !!CanvasRenderer2D.under });
     this.atlases = atlases;
     this.background = options.background || '#000';
     this.sortingLayers = new Map();
@@ -162,12 +162,15 @@ export class CanvasRenderer2D {
     const context = this.context;
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.globalAlpha = 1;
+    const under = !!CanvasRenderer2D.under && CanvasRenderer2D.under.render(this.canvas, this.background);
     context.fillStyle = this.background;
-    context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    if (under) context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    else context.fillRect(0, 0, this.canvas.width, this.canvas.height);
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = 'high';
     for (const camera of Camera.all) {
-      if (camera.clearFlags <= 2) {
+      if (under && !camera.orthographic) continue;
+      if (!under && camera.clearFlags <= 2) {
         context.setTransform(1, 0, 0, 1, 0, 0);
         const background = camera.backgroundColor.clone();
         background.a = 1;
@@ -183,3 +186,5 @@ export class CanvasRenderer2D {
     context.setTransform(1, 0, 0, 1, 0, 0);
   }
 }
+
+CanvasRenderer2D.under = null;

@@ -1,0 +1,20 @@
+tools.texture = async ({ data, name, source, config }) => {
+  const options = (config && config.textures) || {};
+  const rule = (options.rules || []).find((item) => item && item.path && String(source || '').startsWith(item.path)) || {};
+  const limit = Number(rule.maxSize !== undefined ? rule.maxSize : options.maxSize !== undefined ? options.maxSize : 512);
+  const quality = Number(rule.quality !== undefined ? rule.quality : options.quality !== undefined ? options.quality : 80);
+  const input = unb64(data);
+  const bitmap = await createImageBitmap(new Blob([input]), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+  const fit = limit > 0 && name !== 'backdrop.png' ? Math.min(1, limit / Math.max(bitmap.width, bitmap.height)) : 1;
+  const width = Math.max(1, Math.round(bitmap.width * fit));
+  const height = Math.max(1, Math.round(bitmap.height * fit));
+  if (fit === 1 && !(quality > 0)) return null;
+  const canvas = new OffscreenCanvas(width, height);
+  const context = canvas.getContext('2d');
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(bitmap, 0, 0, width, height);
+  const blob = await canvas.convertToBlob(quality > 0 ? { type: 'image/webp', quality: Math.min(100, quality) / 100 } : { type: 'image/png' });
+  if (blob.size >= input.length) return null;
+  const sized = fit < 1 ? bitmap.width + 'x' + bitmap.height + '→' + width + 'x' + height : width + 'x' + height;
+  return { data: b64(new Uint8Array(await blob.arrayBuffer())), mime: blob.type, note: sized + (blob.type === 'image/webp' ? ' webp q' + quality : ' png') };
+};

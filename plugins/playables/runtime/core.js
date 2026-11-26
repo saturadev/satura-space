@@ -125,6 +125,38 @@ export class Vector3 {
   static get forward() {
     return new Vector3(0, 0, 1);
   }
+  static get down() {
+    return new Vector3(0, -1, 0);
+  }
+  static get left() {
+    return new Vector3(-1, 0, 0);
+  }
+  static get back() {
+    return new Vector3(0, 0, -1);
+  }
+  static Dot(a, b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+  }
+  static Cross(a, b) {
+    return new Vector3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
+  }
+  static Scale(a, b) {
+    return new Vector3(a.x * b.x, a.y * b.y, a.z * b.z);
+  }
+  static Angle(a, b) {
+    const length = Math.sqrt(Vector3.Dot(a, a) * Vector3.Dot(b, b));
+    return length < 1e-15 ? 0 : Math.acos(Mathf.Clamp(Vector3.Dot(a, b) / length, -1, 1)) * Mathf.Rad2Deg;
+  }
+  static Normalize(value) {
+    return Vector3.From(value).normalized;
+  }
+  static Project(vector, normal) {
+    const length = Vector3.Dot(normal, normal);
+    return length < 1e-15 ? new Vector3() : Vector3.From(normal).mul(Vector3.Dot(vector, normal) / length);
+  }
+  static ProjectOnPlane(vector, normal) {
+    return Vector3.From(vector).sub(Vector3.Project(vector, normal));
+  }
   static From(value) {
     return new Vector3(value.x, value.y, value.z === undefined ? 0 : value.z);
   }
@@ -148,6 +180,9 @@ export class Vector3 {
   }
   get magnitude() {
     return Math.hypot(this.x, this.y, this.z);
+  }
+  get sqrMagnitude() {
+    return this.x * this.x + this.y * this.y + this.z * this.z;
   }
   get normalized() {
     const length = this.magnitude;
@@ -188,29 +223,152 @@ export class Vector4 {
 }
 
 export class Quaternion {
-  constructor(x = 0, y = 0, z = 0, w = 1, euler = null) {
+  constructor(x = 0, y = 0, z = 0, w = 1) {
     this.x = x;
     this.y = y;
     this.z = z;
     this.w = w;
-    this._euler = euler || new Vector3(0, 0, Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)) * Mathf.Rad2Deg);
   }
   static get identity() {
-    return new Quaternion(0, 0, 0, 1, new Vector3());
+    return new Quaternion(0, 0, 0, 1);
   }
   static Euler(x, y, z) {
-    const euler = typeof x === 'object' ? Vector3.From(x) : new Vector3(x, y, z);
-    const half = (euler.z * Mathf.Deg2Rad) / 2;
-    return new Quaternion(0, 0, Math.sin(half), Math.cos(half), euler);
+    const euler = typeof x === 'object' ? x : { x, y, z };
+    const hx = (euler.x * Mathf.Deg2Rad) / 2;
+    const hy = (euler.y * Mathf.Deg2Rad) / 2;
+    const hz = ((euler.z || 0) * Mathf.Deg2Rad) / 2;
+    const sx = Math.sin(hx);
+    const cx = Math.cos(hx);
+    const sy = Math.sin(hy);
+    const cy = Math.cos(hy);
+    const sz = Math.sin(hz);
+    const cz = Math.cos(hz);
+    return new Quaternion(cy * sx * cz + sy * cx * sz, sy * cx * cz - cy * sx * sz, cy * cx * sz - sy * sx * cz, cy * cx * cz + sy * sx * sz);
   }
   static AngleAxis(angle, axis) {
-    return Quaternion.Euler(axis.x * angle, axis.y * angle, axis.z * angle);
+    const direction = Vector3.From(axis).normalized;
+    const half = (angle * Mathf.Deg2Rad) / 2;
+    const sin = Math.sin(half);
+    return new Quaternion(direction.x * sin, direction.y * sin, direction.z * sin, Math.cos(half));
+  }
+  static FromBasis(r, u, f) {
+    const trace = r.x + u.y + f.z;
+    if (trace > 0) {
+      const s = Math.sqrt(trace + 1) * 2;
+      return new Quaternion((u.z - f.y) / s, (f.x - r.z) / s, (r.y - u.x) / s, s / 4);
+    }
+    if (r.x > u.y && r.x > f.z) {
+      const s = Math.sqrt(1 + r.x - u.y - f.z) * 2;
+      return new Quaternion(s / 4, (u.x + r.y) / s, (f.x + r.z) / s, (u.z - f.y) / s);
+    }
+    if (u.y > f.z) {
+      const s = Math.sqrt(1 + u.y - r.x - f.z) * 2;
+      return new Quaternion((u.x + r.y) / s, s / 4, (f.y + u.z) / s, (f.x - r.z) / s);
+    }
+    const s = Math.sqrt(1 + f.z - r.x - u.y) * 2;
+    return new Quaternion((f.x + r.z) / s, (f.y + u.z) / s, s / 4, (r.y - u.x) / s);
+  }
+  static LookRotation(forward, up = Vector3.up) {
+    const f = Vector3.From(forward).normalized;
+    if (f.sqrMagnitude === 0) return Quaternion.identity;
+    const r = Vector3.Cross(up, f).normalized;
+    if (r.sqrMagnitude === 0) return Quaternion.FromToRotation(Vector3.forward, f);
+    return Quaternion.FromBasis(r, Vector3.Cross(f, r), f);
+  }
+  static FromToRotation(from, to) {
+    const a = Vector3.From(from).normalized;
+    const b = Vector3.From(to).normalized;
+    const dot = Vector3.Dot(a, b);
+    if (dot > 0.999999) return Quaternion.identity;
+    if (dot < -0.999999) {
+      let axis = Vector3.Cross(Vector3.right, a);
+      if (axis.sqrMagnitude < 1e-6) axis = Vector3.Cross(Vector3.up, a);
+      return Quaternion.AngleAxis(180, axis);
+    }
+    const cross = Vector3.Cross(a, b);
+    return new Quaternion(cross.x, cross.y, cross.z, 1 + dot).normalized;
+  }
+  static Inverse(q) {
+    return new Quaternion(-q.x, -q.y, -q.z, q.w);
+  }
+  static Dot(a, b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+  }
+  static Angle(a, b) {
+    const dot = Math.min(Math.abs(Quaternion.Dot(a, b)), 1);
+    return dot > 0.999999 ? 0 : Math.acos(dot) * 2 * Mathf.Rad2Deg;
+  }
+  static SlerpUnclamped(a, b, t) {
+    let dot = Quaternion.Dot(a, b);
+    const sign = dot < 0 ? -1 : 1;
+    dot *= sign;
+    let ka = 1 - t;
+    let kb = t;
+    if (dot < 0.9995) {
+      const angle = Math.acos(dot);
+      const sin = Math.sin(angle);
+      ka = Math.sin((1 - t) * angle) / sin;
+      kb = Math.sin(t * angle) / sin;
+    }
+    kb *= sign;
+    return new Quaternion(a.x * ka + b.x * kb, a.y * ka + b.y * kb, a.z * ka + b.z * kb, a.w * ka + b.w * kb).normalized;
+  }
+  static Slerp(a, b, t) {
+    return Quaternion.SlerpUnclamped(a, b, Mathf.Clamp01(t));
+  }
+  static Lerp(a, b, t) {
+    const k = Mathf.Clamp01(t);
+    const sign = Quaternion.Dot(a, b) < 0 ? -1 : 1;
+    return new Quaternion(a.x + (b.x * sign - a.x) * k, a.y + (b.y * sign - a.y) * k, a.z + (b.z * sign - a.z) * k, a.w + (b.w * sign - a.w) * k).normalized;
+  }
+  static RotateTowards(from, to, maxDegreesDelta) {
+    const angle = Quaternion.Angle(from, to);
+    return angle === 0 ? to.clone() : Quaternion.SlerpUnclamped(from, to, Math.min(1, maxDegreesDelta / angle));
+  }
+  get normalized() {
+    const length = Math.hypot(this.x, this.y, this.z, this.w);
+    return length < 1e-15 ? Quaternion.identity : new Quaternion(this.x / length, this.y / length, this.z / length, this.w / length);
   }
   get eulerAngles() {
-    return this._euler.clone();
+    const q = this.normalized;
+    const sin = 2 * (q.w * q.x - q.y * q.z);
+    let x;
+    let y;
+    let z = 0;
+    if (Math.abs(sin) < 0.9999999) {
+      x = Math.asin(sin);
+      y = Math.atan2(2 * (q.x * q.z + q.w * q.y), 1 - 2 * (q.x * q.x + q.y * q.y));
+      z = Math.atan2(2 * (q.x * q.y + q.w * q.z), 1 - 2 * (q.x * q.x + q.z * q.z));
+    } else {
+      x = (Math.PI / 2) * Math.sign(sin);
+      y = Math.atan2(-2 * (q.x * q.z - q.w * q.y), 1 - 2 * (q.y * q.y + q.z * q.z));
+    }
+    const positive = (radians) => {
+      const degrees = radians * Mathf.Rad2Deg;
+      return degrees < -0.005729578 ? degrees + 360 : degrees > 359.99427 ? degrees - 360 : degrees;
+    };
+    return new Vector3(positive(x), positive(y), positive(z));
+  }
+  mul(other) {
+    const { x, y, z, w } = this;
+    if (other.w === undefined) {
+      const tx = 2 * (y * other.z - z * other.y);
+      const ty = 2 * (z * other.x - x * other.z);
+      const tz = 2 * (x * other.y - y * other.x);
+      return new Vector3(other.x + w * tx + y * tz - z * ty, other.y + w * ty + z * tx - x * tz, other.z + w * tz + x * ty - y * tx);
+    }
+    return new Quaternion(
+      w * other.x + x * other.w + y * other.z - z * other.y,
+      w * other.y + y * other.w + z * other.x - x * other.z,
+      w * other.z + z * other.w + x * other.y - y * other.x,
+      w * other.w - x * other.x - y * other.y - z * other.z
+    );
+  }
+  Equals(other) {
+    return other != null && this.x === other.x && this.y === other.y && this.z === other.z && this.w === other.w;
   }
   clone() {
-    return new Quaternion(this.x, this.y, this.z, this.w, this._euler.clone());
+    return new Quaternion(this.x, this.y, this.z, this.w);
   }
 }
 
