@@ -1,0 +1,5 @@
+{
+  "name": "trends",
+  "title": "Trends",
+  "description": "Reference for finding TikTok and Instagram trends: the agent sets up its own Playwright browser where the user signs in, collects public post data and reads which formats are rising"
+}

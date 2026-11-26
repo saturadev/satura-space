@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trends from TikTok and Instagram</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+<nav><a href="index.html" aria-current="page">Trends from TikTok and Instagram</a><a href="reading.html">Reading a trend</a><a href="sources.html">Sources</a></nav>
+<h1>Trends from TikTok and Instagram</h1>
+<p class="lead">Your agent looks through TikTok and Instagram the way you would, in a browser of its own where you are signed in to your own accounts, and comes back with the formats, sounds and hooks that are taking off right now. You pick one, and it can become a game.</p>
+
+<h2>How it works</h2>
+<table>
+<tr><th>Step</th><th>What happens</th></tr>
+<tr><td>1. A browser of its own</td><td>The first time, the agent installs Playwright and the Chromium that Playwright downloads, in a folder in your home directory. It is a separate browser with its own profile: your everyday Chrome, its tabs and logins are never touched.</td></tr>
+<tr><td>2. You sign in</td><td>A window of that browser opens on the TikTok or Instagram sign-in page. You sign in there yourself, with a QR code from your phone or your login. The agent never types or reads your password. The sign-in stays in that profile for next time.</td></tr>
+<tr><td>3. It looks around</td><td>Your feed, searches for the topics you name, hashtag and sound pages, and TikTok's public trend pages. It scrolls at a person's pace and only reads: no likes, follows, comments or messages.</td></tr>
+<tr><td>4. It reads the numbers</td><td>For each video: link, author, caption, hashtags, sound, views, likes, comments, shares and when it was posted. Most of it comes from the data the site already loads for the page.</td></tr>
+<tr><td>5. You get a short list</td><td>Formats that several creators repeat, sounds that are rising, and videos growing fast for their age, with links. The files stay in the project's <code>.sspace/trends/</code>, out of git.</td></tr>
+</table>
+
+<h2>Good to know</h2>
+<ul>
+<li><b>Your account, your call.</b> The agent browses with your account, so keep runs short and occasional. The sites may ask you to prove you're human now and then; solve it in the window and the agent carries on.</li>
+<li><b>Signing out.</b> Sign out in that window, or delete the folder <code>.satura-trends</code> in your home directory to remove the browser and everything signed in to it.</li>
+<li><b>Public posts only.</b> The agent keeps what any viewer sees on a post. It doesn't download videos unless you pick one to turn into a game.</li>
+<li><b>Sites change.</b> When TikTok or Instagram change their pages, the agent works it out from the page in front of it, not from a fixed recipe.</li>
+</ul>
+
+<p>Which trends make good games: <a href="reading.html">Reading a trend</a>.</p>
+<footer>Principles checked 2026-11-26. Limits, revenue shares, SDK versions and commands change, so they are not copied here: every platform fact links to its owner's page. Read that page before you act on it.</footer>
+</main>
+</body>
+</html>
