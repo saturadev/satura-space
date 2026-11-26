@@ -1292,8 +1292,8 @@ public static partial class MCPTestBridge
         {
             sun = null;
             float best = 0f;
-            foreach (var l in Light.GetLights(LightType.Directional, 0))
-                if (l != null && l.isActiveAndEnabled && l.intensity > best)
+            foreach (var l in SceneObjectsOf<Light>(FindObjectsInactive.Exclude))
+                if (l != null && l.type == LightType.Directional && (l.cullingMask & 1) != 0 && l.isActiveAndEnabled && l.intensity > best)
                 {
                     best = l.intensity;
                     sun = l;

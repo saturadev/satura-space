@@ -15,7 +15,11 @@ namespace HotReloadPrototype.Editor {
                     if (m.IsStatic) {
                         m.Invoke(null, null);
                     } else if (typeof(MonoBehaviour).IsAssignableFrom(m.DeclaringType)) {
+#if UNITY_6000_6_OR_NEWER
+                        var objs = UnityEngine.Object.FindObjectsByType(m.DeclaringType);
+#else
                         var objs = UnityEngine.Object.FindObjectsByType(m.DeclaringType, FindObjectsSortMode.None);
+#endif
                         foreach (var o in objs) m.Invoke(o, null);
                     }
                 } catch (Exception e) {

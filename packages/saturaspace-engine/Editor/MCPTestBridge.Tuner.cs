@@ -1700,7 +1700,7 @@ public static partial class MCPTestBridge
     static ulong TunerRendererSig()
     {
         long t = TpNow();
-        var all = UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        var all = SceneObjectsOf<Renderer>(FindObjectsInactive.Include);
         ulong h = (ulong)all.Length * 1099511628211UL;
         foreach (var r in all)
         {

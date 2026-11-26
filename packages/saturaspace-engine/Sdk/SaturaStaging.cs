@@ -141,7 +141,12 @@ public abstract class SaturaStaging : MonoBehaviour
 
     internal static List<SaturaStaging> LiveAll()
     {
-        return UnityEngine.Object.FindObjectsByType<SaturaStaging>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
+#if UNITY_6000_6_OR_NEWER
+        var all = UnityEngine.Object.FindObjectsByType<SaturaStaging>(FindObjectsInactive.Exclude);
+#else
+        var all = UnityEngine.Object.FindObjectsByType<SaturaStaging>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+#endif
+        return all
             .Where(s => s != null && s.gameObject.scene.IsValid() && s.gameObject.scene.isLoaded && (s.gameObject.hideFlags & HideFlags.HideInHierarchy) == 0)
             .OrderBy(s => s.gameObject.scene.path, StringComparer.Ordinal)
             .ThenBy(s => s.transform.GetSiblingIndex())

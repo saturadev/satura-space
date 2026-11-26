@@ -70,7 +70,7 @@ public static partial class MCPTestBridge
         var terrains = new HashSet<Terrain>();
         if (scope.Keep.Count > 0)
         {
-            foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            foreach (var r in SceneObjectsOf<Renderer>(FindObjectsInactive.Exclude))
                 if (!r.forceRenderingOff && !ShotUnder(r.transform, scope.Keep)) renderers.Add(r);
             foreach (var t in Terrain.activeTerrains)
                 if (t != null && !ShotUnder(t.transform, scope.Keep)) terrains.Add(t);

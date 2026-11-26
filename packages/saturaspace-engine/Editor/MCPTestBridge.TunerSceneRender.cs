@@ -28,6 +28,24 @@ public static partial class MCPTestBridge
     static int _tunerHideGen = -1;
     static string _tunerHideFilter;
     static bool _tunerHideParticles;
+
+    static T[] SceneObjectsOf<T>(FindObjectsInactive inactive) where T : UnityEngine.Object
+    {
+#if UNITY_6000_6_OR_NEWER
+        return UnityEngine.Object.FindObjectsByType<T>(inactive);
+#else
+        return UnityEngine.Object.FindObjectsByType<T>(inactive, FindObjectsSortMode.None);
+#endif
+    }
+
+    static UnityEngine.Object[] SceneObjectsOf(Type type, FindObjectsInactive inactive)
+    {
+#if UNITY_6000_6_OR_NEWER
+        return UnityEngine.Object.FindObjectsByType(type, inactive);
+#else
+        return UnityEngine.Object.FindObjectsByType(type, inactive, FindObjectsSortMode.None);
+#endif
+    }
     static readonly List<Terrain> _tunerAllTerrains = new List<Terrain>();
     static readonly List<Renderer> _tunerHidden = new List<Renderer>();
     static readonly List<Terrain> _tunerHiddenTerrains = new List<Terrain>();
@@ -524,11 +542,11 @@ public static partial class MCPTestBridge
         _tunerAllRendGen = _tunerHierarchyGen;
         _tunerAllRends.Clear();
         _tunerAllTerrains.Clear();
-        _tunerAllRends.AddRange(UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None));
+        _tunerAllRends.AddRange(SceneObjectsOf<Renderer>(FindObjectsInactive.Exclude));
         _tunerAllParticles.Clear();
         foreach (var r in _tunerAllRends)
             if (r is ParticleSystemRenderer) _tunerAllParticles.Add(r);
-        _tunerAllTerrains.AddRange(UnityEngine.Object.FindObjectsByType<Terrain>(FindObjectsInactive.Exclude, FindObjectsSortMode.None));
+        _tunerAllTerrains.AddRange(SceneObjectsOf<Terrain>(FindObjectsInactive.Exclude));
     }
 
     static void CollectTunerShownRends(TunerSession s)
@@ -788,7 +806,7 @@ public static partial class MCPTestBridge
         {
             _tunerLightGen = _tunerHierarchyGen;
             _tunerLights.Clear();
-            _tunerLights.AddRange(UnityEngine.Object.FindObjectsByType<Light>(FindObjectsInactive.Include, FindObjectsSortMode.None));
+            _tunerLights.AddRange(SceneObjectsOf<Light>(FindObjectsInactive.Include));
         }
         foreach (var l in _tunerLights)
         {

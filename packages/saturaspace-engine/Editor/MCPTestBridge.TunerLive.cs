@@ -441,7 +441,7 @@ public static partial class MCPTestBridge
         if (s.Scene)
         {
             foreach (var type in TunerIconTypes)
-                foreach (var o in UnityEngine.Object.FindObjectsByType(type, FindObjectsInactive.Include, FindObjectsSortMode.None))
+                foreach (var o in SceneObjectsOf(type, FindObjectsInactive.Include))
                     NoteTunerIcon(s, o as Component);
         }
         else
