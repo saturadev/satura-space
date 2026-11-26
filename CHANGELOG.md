@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.5.0 — 2026-11-26
+
+- **Monetization and Publishing references** — two built-in plugins with no code, each a page in the agent guide plus HTML pages for you: how web games earn, the ad rules every portal shares, how to set up a Unity web build, and how each platform takes builds (CLI, API, MCP or web console). Nothing that changes is copied into them: limits, revenue shares, SDK versions and commands link to the platform's own pages, and the agent reads those live before it acts. Ask your agent to show you a page.
+- **Trends** — a built-in reference for finding what is rising on TikTok and Instagram. Your agent sets up its own Playwright browser in `~/.satura-trends`, separate from your Chrome. You sign in to your own account there, and it reads your feed, searches, hashtags and TikTok's public trend lists at a person's pace without liking, following or commenting. You get five to ten formats with numbers, example links and a game idea for each, and the files stay in the project's `.sspace/trends/`.
+- **Plugins** — a plugin's `pages/` folder lands next to its page in the agent guide, so a plugin can be a reference with no code at all.
+
 ## 3.4.0 — 2026-11-26
 
 - **Playable ads from a Unity game** — the built-in `playables` plugin turns a Unity scene into a playable ad: one HTML file with the real game logic and no Unity runtime inside. The editor exports the scene, prefabs, animations, sprites, meshes, materials and audio; a small JS runtime re-implements the part of the UnityEngine API games use (2D, uGUI, Animator, coroutines, and on demand a WebGL 3D renderer, 3D physics and Web Audio); the agent writes each gameplay script once more in JS with the same names, and the plugin packs it. `playables.init`, `scan`, `export`, `pack`, `size`, `verify`, `preview` and `networks` in `satura_exec`, each also an app handle, and a page in the agent guide that walks an agent through any game.
