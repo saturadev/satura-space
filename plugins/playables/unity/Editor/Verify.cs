@@ -275,7 +275,7 @@ namespace SaturaSpace.Playables
 
         private void EnsureInput()
         {
-            EventSystem system = EventSystem.current != null ? EventSystem.current : UnityEngine.Object.FindFirstObjectByType<EventSystem>();
+            EventSystem system = EventSystem.current != null ? EventSystem.current : UnityEngine.Object.FindAnyObjectByType<EventSystem>();
             if (system == null) return;
             var module = system.GetComponent<StandaloneInputModule>();
             foreach (BaseInputModule other in system.GetComponents<BaseInputModule>())
@@ -396,7 +396,7 @@ namespace SaturaSpace.Playables
                 if (settle == null || string.IsNullOrEmpty(settle.type)) continue;
                 Type type = Probes.FindType(settle.type);
                 if (type == null) continue;
-                foreach (UnityEngine.Object obj in UnityEngine.Object.FindObjectsByType(type, FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                foreach (UnityEngine.Object obj in Probes.SceneObjects(type, FindObjectsInactive.Exclude))
                 {
                     object value = Probes.Member(obj, settle.member);
                     string text = value == null ? "null" : Convert.ToString(value, CultureInfo.InvariantCulture);
@@ -458,6 +458,15 @@ namespace SaturaSpace.Playables
     {
         private const BindingFlags Members = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
         private static readonly Dictionary<string, Type> Types = new Dictionary<string, Type>();
+
+        public static UnityEngine.Object[] SceneObjects(Type type, FindObjectsInactive inactive)
+        {
+#if UNITY_6000_6_OR_NEWER
+            return UnityEngine.Object.FindObjectsByType(type, inactive);
+#else
+            return UnityEngine.Object.FindObjectsByType(type, inactive, FindObjectsSortMode.None);
+#endif
+        }
 
         public static Type FindType(string name)
         {
@@ -583,7 +592,7 @@ namespace SaturaSpace.Playables
                 var rows = new List<string>();
                 if (type != null)
                 {
-                    foreach (UnityEngine.Object obj in UnityEngine.Object.FindObjectsByType(type, probe.inactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                    foreach (UnityEngine.Object obj in SceneObjects(type, probe.inactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude))
                     {
                         var row = new Node();
                         if (obj is Component component) row["path"] = PathOf(component.transform);

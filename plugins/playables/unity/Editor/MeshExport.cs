@@ -371,7 +371,12 @@ namespace SaturaSpace.Playables
         {
             if (RenderSettings.skybox == null) return null;
             Camera source = null;
-            foreach (Camera camera in UnityEngine.Object.FindObjectsByType<Camera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+#if UNITY_6000_6_OR_NEWER
+            Camera[] cameras = UnityEngine.Object.FindObjectsByType<Camera>(FindObjectsInactive.Exclude);
+#else
+            Camera[] cameras = UnityEngine.Object.FindObjectsByType<Camera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+#endif
+            foreach (Camera camera in cameras)
             {
                 if (camera.clearFlags == CameraClearFlags.Skybox && (source == null || camera.CompareTag("MainCamera"))) source = camera;
             }

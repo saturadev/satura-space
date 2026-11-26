@@ -31,7 +31,12 @@ namespace SaturaSpace.Playables
             };
             string extension = Path.GetExtension(path).ToLowerInvariant();
             string id = path.Length > 0 ? AssetDatabase.AssetPathToGUID(path) : "";
-            string stem = "audio_" + Safe(clip.name) + "_" + (id.Length >= 8 ? id.Substring(0, 8) : Mathf.Abs(clip.GetInstanceID()).ToString());
+#if UNITY_6000_5_OR_NEWER
+            string fallbackId = EntityId.ToULong(clip.GetEntityId()).ToString();
+#else
+            string fallbackId = Mathf.Abs(clip.GetInstanceID()).ToString();
+#endif
+            string stem = "audio_" + Safe(clip.name) + "_" + (id.Length >= 8 ? id.Substring(0, 8) : fallbackId);
             byte[] bytes = null;
             if (Array.IndexOf(BrowserFormats, extension) >= 0 && File.Exists(path)) bytes = File.ReadAllBytes(path);
             else extension = ".wav";
