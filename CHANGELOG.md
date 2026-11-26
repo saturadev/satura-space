@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.4.0 — 2026-11-26
+
+- **Playable ads from a Unity game** — the built-in `playables` plugin turns a Unity scene into a playable ad: one HTML file with the real game logic and no Unity runtime inside. The editor exports the scene, prefabs, animations, sprites, meshes, materials and audio; a small JS runtime re-implements the part of the UnityEngine API games use (2D, uGUI, Animator, coroutines, and on demand a WebGL 3D renderer, 3D physics and Web Audio); the agent writes each gameplay script once more in JS with the same names, and the plugin packs it. `playables.init`, `scan`, `export`, `pack`, `size`, `verify`, `preview` and `networks` in `satura_exec`, each also an app handle, and a page in the agent guide that walks an agent through any game.
+- **Checked against Unity** — `playables.verify` plays the same seeded input in the HTML and in the project's editor in play mode on a fixed 60 fps step and compares the game state after every step. A match-3 from GitHub matches Unity in 340 of 340 states, a 3D helix jump with rigidbody physics in 162 of 162.
+- **Fits the ad budget** — sprite atlases and textures go to WebP at a chosen scale and quality, meshes are reduced with quadric edge collapse and quantized, audio is trimmed and re-encoded to Opus, and `playables.size` shows where every byte goes.
+- **Every big ad network** — `playables.networks` writes a ready variant for AppLovin, Unity Ads, ironSource, Mintegral, Google Ads, Meta and TikTok, each with that network's CTA call, lifecycle, container and size limit, and checks each one in a hidden page under a mock of the network API.
+- **Plugins** — main-process plugins can open hidden offscreen pages, zip files, and read their own files live from the repo in dev builds.
+
 ## 3.3.0 — 2026-11-22
 
 - **A game from a video** — The start screen has a Copy tab: paste a link, pick Claude Code's model and effort, and that's all. Paste a link to a short video (TikTok, Instagram Reels, YouTube Shorts, X, or any page yt-dlp reads) and Satura Space downloads it, cuts it into frames, creates a project on the newest Unity you have installed and starts your agent on a small game that plays like the clip, with its own names, characters and art. The agent first looks on GitHub for the best open-source solutions to the clip's core mechanic, adapts only permissively licensed ones and credits them. The agent films the gameplay and renders a Remotion video with the clip next to the game, saved as `ClipToGame/clip-vs-game.mp4`. A bad, private or removed link shows the reason in the window and no project is created.
