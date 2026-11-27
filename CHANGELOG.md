@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.5.2 — 2026-11-27
+
+- **Agents keep working across an app update** — an agent whose terminal stayed open while Satura Space updated could no longer run `satura_exec`: every call, even `return 1`, failed with `Error -3 while decompressing data: incorrect header check`. The MCP server read its own code from the app's files on demand, and the update had replaced them. It now loads everything into memory when it starts, and if the app it came with is replaced, the agent gets a plain message to restart instead of a cryptic error. Agents started on 3.5.1 or older still need one restart after this update.
+
 ## 3.5.1 — 2026-11-27
 
 - **Unity 6.6** — projects on Unity 6000.6 open again. The `playables` plugin called `GetInstanceID`, which Unity 6.6 refuses to compile, so the editor started in Safe Mode and never connected. The engine and its plugins also stopped using `FindObjectsSortMode` and `Light.GetLights`, which Unity 6.6 marks obsolete, so they keep compiling when Unity removes those too.
