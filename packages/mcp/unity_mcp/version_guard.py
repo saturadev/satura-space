@@ -37,6 +37,23 @@ _NUMERIC_PREFIX = re.compile(r"^(\d+(?:\.\d+)*)")
 _warned = False
 
 
+def _exe_identity() -> tuple[int, int, int, int] | None:
+    if not getattr(sys, "frozen", False):
+        return None
+    try:
+        st = os.stat(sys.executable)
+    except OSError:
+        return None
+    return (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns)
+
+
+_STARTED_AS = _exe_identity()
+
+
+def exe_replaced() -> bool:
+    return _STARTED_AS is not None and _exe_identity() not in (None, _STARTED_AS)
+
+
 def channel() -> str:
     """Which build stamped a marker: the frozen exe ships with the app, source runs are dev.
     Mirrors ``app.isPackaged`` in the orchestrator's engineBuildId()."""
@@ -135,11 +152,11 @@ def _warn_unknown_self() -> None:
     print("[satura-space] version guard off: this server's own version is unknown", file=sys.stderr)
 
 
-def _message(mine: str, found: str, source: str) -> str:
+def _message(mine: str | None, now: str) -> str:
     return (
         "ERROR: Satura Space was updated while this session was running — its MCP tools are frozen.\n"
-        f"  this MCP server: {mine}\n"
-        f"  Satura Space now: {found} ({source})\n"
+        f"  this MCP server: {mine or 'unknown version'}\n"
+        f"  Satura Space now: {now}\n"
         "This server cannot reload itself, so every Satura tool will keep failing for the rest of "
         "this session. Ask the user to restart this agent — close and reopen the terminal in Satura "
         "Space, or exit and run `claude` again. Do not retry."
@@ -154,6 +171,8 @@ def stale_message(project_root: str) -> str | None:
     if os.environ.get(_SKIP_ENV):
         return None
     mine = self_version()
+    if exe_replaced():
+        return _message(mine, f"another build at {sys.executable}")
     if not mine:
         _warn_unknown_self()
         return None
@@ -163,5 +182,5 @@ def stale_message(project_root: str) -> str | None:
         (_APP_SOURCE, app_version(root)),
     ):
         if found and _moved_ahead(found, mine):
-            return _message(mine, found, source)
+            return _message(mine, f"{found} ({source})")
     return None

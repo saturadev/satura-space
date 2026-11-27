@@ -17,6 +17,8 @@ Output:
     dist/satura-space-mcp   (the standalone binary, copied to the orchestrator's resources/mcp)
 """
 
+import os
+
 from PyInstaller.utils.hooks import collect_submodules
 
 # FastMCP / MCP and our own tool modules register tools via import side-effects and
@@ -43,7 +45,7 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=[os.path.join(SPECPATH, 'rthooks', 'pyi_rth_pyz_memory.py')],
     excludes=[],
     noarchive=False,
     optimize=0,

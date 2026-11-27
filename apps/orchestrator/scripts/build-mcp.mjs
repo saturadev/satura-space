@@ -50,7 +50,8 @@ function sourceFiles() {
     'satura-space-mcp.spec',
     'requirements.txt',
     'requirements-build.txt',
-    'pyproject.toml'
+    'pyproject.toml',
+    join('rthooks', 'pyi_rth_pyz_memory.py')
   ].map((f) => join(MCP_DIR, f))
   const pkg = join(MCP_DIR, 'unity_mcp')
   for (const e of readdirSync(pkg, { recursive: true })) {
